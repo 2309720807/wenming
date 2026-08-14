@@ -1,4 +1,5 @@
 @echo off
+setlocal EnableDelayedExpansion
 set GIT=F:\software\Git\cmd\git.exe
 cd /d "%~dp0"
 set DEVICE=%COMPUTERNAME%
@@ -46,11 +47,11 @@ if not errorlevel 1 (
     echo [步骤2] 检测到本地有未推送改动（上次可能未收工）
     REM 检查云端是否被他人修改过（origin/main 是否有本地没有的新提交）
     for /f %%i in ('"%GIT%" rev-list --count HEAD..origin/main 2^>nul') do set REMOTE_NEW=%%i
-    if "%REMOTE_NEW%"=="0" (
+    if "!REMOTE_NEW!"=="0" (
         echo [检查] 云端未被他人修改，可执行迷你收工
     ) else (
         echo.
-        echo [警告] 云端已被他人修改（新增 %REMOTE_NEW% 个提交），禁止直接推送！
+        echo [警告] 云端已被他人修改（新增 !REMOTE_NEW! 个提交），禁止直接推送！
         echo 处理流程：先本地备份，再回退到云端版本
         echo 请手动执行备份后与占用者协调，或运行：
         echo   git stash        ^(备份本地改动^)
@@ -58,8 +59,8 @@ if not errorlevel 1 (
         pause
         exit /b 1
     )
-    set /p CONFIRM=是否确认推送本地改动到云端? (Y/N):
-    if /i not "%CONFIRM%"=="Y" (
+    choice /c YN /m "是否确认推送本地改动到云端? Y=确认 N=跳过"
+    if errorlevel 2 (
         echo [跳过] 已取消推送本地改动，从当前本地版本继续
         goto :SKIP_PUSH
     )
