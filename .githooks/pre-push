@@ -1,0 +1,54 @@
+#!/bin/sh
+# pre-push hook — 强制规则：
+# 1. 禁止推送 addons/、.godot/、密钥等禁止内容
+# 2. 非锁内容推送必须满足条件（脚本已确认）才放行
+
+# 若环境变量 ALLOW_PUSH=1（由收工脚本 push.bat 设置），放行
+if [ "$ALLOW_PUSH" = "1" ]; then
+    exit 0
+fi
+
+# 从 stdin 读取推送信息
+while read local_ref local_sha remote_ref remote_sha; do
+    if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+        echo "pre-push: 拒绝删除远程分支"
+        exit 1
+    fi
+
+    # 计算本次推送涉及的文件
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+        # 新分支首次推送
+        files=$(git diff-tree --no-commit-id --name-only -r "$local_sha" 2>/dev/null)
+    else
+        files=$(git diff --name-only "$remote_sha" "$local_sha" 2>/dev/null)
+    fi
+
+    # 检查禁止内容
+    forbidden=$(echo "$files" | grep -E '^(addons/|\.godot/|.*\.(pem|key|env)$|.*(api[_-]?key|secret|token).*)' | head -n 5)
+    if [ -n "$forbidden" ]; then
+        echo "pre-push: 推送包含禁止内容，已拦截:"
+        echo "$forbidden"
+        echo "禁止推送 addons/、.godot/、密钥等文件"
+        exit 1
+    fi
+
+    # 检查是否只有 LOCK.md 相关（锁操作，自动允许）
+    only_lock=true
+    for f in $files; do
+        if [ "$f" != "LOCK.md" ]; then
+            only_lock=false
+            break
+        fi
+    done
+
+    if [ "$only_lock" = "true" ]; then
+        exit 0
+    fi
+
+    echo "pre-push: 检测到非锁内容推送"
+    echo "根据规则，除 LOCK.md 外的一切推送必须由用户确认"
+    echo "请使用 push.bat（收工，用户确认后设置 ALLOW_PUSH=1）推送"
+    exit 1
+done
+
+exit 0

@@ -2,11 +2,14 @@
 set GIT=F:\software\Git\cmd\git.exe
 cd /d "%~dp0"
 
+REM 启用 git 钩子（规则技术强制）
+"%GIT%" config core.hooksPath .githooks
+
 echo ==================================
 echo  收工流程：推送改动 + 释放占用锁
 echo ==================================
 
-REM 1. 提交并推送所有改动
+REM 1. 提交并推送所有改动（用户运行此脚本即视为已确认收工）
 "%GIT%" add .
 if errorlevel 1 (
     echo [错误] git add 失败
@@ -22,12 +25,14 @@ if errorlevel 1 (
     echo [提示] 可能没有改动需要提交
 )
 
+set ALLOW_PUSH=1
 "%GIT%" push
 if errorlevel 1 (
     echo [错误] 推送失败，请检查网络或登录状态
     pause
     exit /b 1
 )
+set ALLOW_PUSH=
 
 REM 2. 释放占用锁（若存在）
 if exist LOCK.md (
