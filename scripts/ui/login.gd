@@ -17,11 +17,19 @@ func _ready() -> void:
 	name_input.grab_focus()
 
 
+func _show_error(message: String) -> void:
+	## 错误提示淡入显示，避免突兀闪烁。
+	error_label.text = message
+	error_label.visible = true
+	error_label.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(error_label, "modulate:a", 1.0, 0.2)
+
+
 func _on_start_pressed(_text: String = "") -> void:
 	var name_value := name_input.text.strip_edges()
 	if name_value.is_empty():
-		error_label.text = "请输入玩家昵称"
-		error_label.visible = true
+		_show_error("请输入玩家昵称")
 		return
 	player_name = name_value
 	error_label.visible = false
