@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://dnqj0hxde1nn8"]
+[gd_scene format=3 uid="uid://leka6lrujge6r"]
 
 [ext_resource type="Script" path="res://scripts/ui/login.gd" id="1_login"]
 [ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Normal.ttf" id="2_font_normal"]
@@ -30,15 +30,15 @@ fill_to = Vector2(0.5, 0)
 
 [sub_resource type="Gradient" id="Gradient_star"]
 offsets = PackedFloat32Array(0, 0.6, 1)
-colors = PackedColorArray(1, 1, 1, 0.9, 1, 1, 1, 0.45, 1, 1, 1, 0)
+colors = PackedColorArray(0.85, 0.9, 1, 0.4, 0.85, 0.9, 1, 0.2, 0.85, 0.9, 1, 0)
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_star"]
 spread = 180.0
 gravity = Vector3(0, -3, 0)
 initial_velocity_min = 4.0
 initial_velocity_max = 14.0
-scale_min = 0.4
-scale_max = 1.5
+scale_min = 0.3
+scale_max = 1.2
 color_ramp = SubResource("Gradient_star")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
@@ -127,7 +127,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_login")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -135,14 +135,16 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("GradientTexture2D_bg")
+expand_mode = 1
+stretch_mode = 1
 
 [node name="Stars" type="GPUParticles2D" parent="."]
 process_material = SubResource("ParticleProcessMaterial_star")
-amount = 90
+amount = 60
 lifetime = 14.0
 visibility_rect = Rect2(-1200, -700, 2400, 1400)
 
-[node name="Glow" type="ColorRect" parent="."]
+[node name="Glow" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -156,6 +158,8 @@ offset_bottom = 350.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("GradientTexture2D_glow")
+expand_mode = 1
+stretch_mode = 1
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
