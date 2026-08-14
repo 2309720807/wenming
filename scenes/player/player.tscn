@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
+
+[sub_resource type="CircleShape2D" id="PlayerShape"]
+radius = 14.0
+
+[node name="Player" type="CharacterBody2D"]
+script = ExtResource("1_player")
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("PlayerShape")
+
+[node name="Visual" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-14, -8, 14, 0, -14, 8)
+color = Color(0.26, 0.72, 1, 1)
+
+[node name="Muzzle" type="Marker2D" parent="."]
+position = Vector2(14, 0)
