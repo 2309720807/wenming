@@ -1,58 +1,13 @@
 [gd_scene format=3 uid="uid://leka6lrujge6r"]
 
-[ext_resource type="Script" path="res://scripts/ui/login.gd" id="1_login"]
-[ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Normal.ttf" id="2_font_normal"]
-[ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Bold.ttf" id="3_font_bold"]
-[ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Heavy.ttf" id="4_font_heavy"]
-
-[sub_resource type="Gradient" id="Gradient_bg"]
-offsets = PackedFloat32Array(0, 0.55, 1)
-colors = PackedColorArray(0.04, 0.05, 0.11, 1, 0.06, 0.1, 0.2, 1, 0.1, 0.07, 0.19, 1)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_bg"]
-gradient = SubResource("Gradient_bg")
-width = 64
-height = 64
-fill_from = Vector2(0, 0)
-fill_to = Vector2(0, 1)
-
-[sub_resource type="Gradient" id="Gradient_glow"]
-offsets = PackedFloat32Array(0, 0.45, 1)
-colors = PackedColorArray(0.21, 0.78, 1, 0.16, 0.12, 0.45, 0.9, 0.08, 0.21, 0.78, 1, 0)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_glow"]
-gradient = SubResource("Gradient_glow")
-width = 256
-height = 256
-fill = 1
-fill_from = Vector2(0.5, 0.5)
-fill_to = Vector2(0.5, 0)
-
-[sub_resource type="Gradient" id="Gradient_star"]
-offsets = PackedFloat32Array(0, 0.12, 0.5, 0.88, 1)
-colors = PackedColorArray(0.85, 0.9, 1, 0, 0.85, 0.9, 1, 0.38, 0.85, 0.9, 1, 0.2, 0.85, 0.9, 1, 0.38, 0.85, 0.9, 1, 0)
-
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_star"]
-spread = 180.0
-gravity = Vector3(0, -3, 0)
-initial_velocity_min = 4.0
-initial_velocity_max = 14.0
-scale_min = 0.3
-scale_max = 1.0
-color_ramp = SubResource("Gradient_star")
-
-[sub_resource type="Gradient" id="Gradient_bright"]
-offsets = PackedFloat32Array(0, 0.35, 0.7, 1)
-colors = PackedColorArray(0.8, 0.88, 1, 0, 0.8, 0.88, 1, 0.95, 0.8, 0.88, 1, 0.45, 0.8, 0.88, 1, 0)
-
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_bright"]
-spread = 180.0
-gravity = Vector3(0, -3, 0)
-initial_velocity_min = 2.0
-initial_velocity_max = 8.0
-scale_min = 1.4
-scale_max = 2.6
-color_ramp = SubResource("Gradient_bright")
+[ext_resource type="Script" uid="uid://dloju0d68epo7" path="res://scripts/ui/login.gd" id="1_login"]
+[ext_resource type="FontFile" uid="uid://cs0geye4ylyma" path="res://assets/fonts/SourceHanSansCN-Normal.ttf" id="2_font_normal"]
+[ext_resource type="Material" path="res://scenes/ui/login_bg_material.tres" id="2_sbb5b"]
+[ext_resource type="FontFile" uid="uid://dgjis3xtpvnfc" path="res://assets/fonts/SourceHanSansCN-Bold.ttf" id="3_font_bold"]
+[ext_resource type="Texture2D" path="res://scenes/ui/login_bg_gradient.tres" id="3_h43q7"]
+[ext_resource type="Material" path="res://scenes/ui/login_star_material.tres" id="4_2pfwv"]
+[ext_resource type="FontFile" uid="uid://w7amrbgfchpx" path="res://assets/fonts/SourceHanSansCN-Heavy.ttf" id="4_font_heavy"]
+[ext_resource type="Material" path="res://scenes/ui/login_bright_star_material.tres" id="5_j6hnr"]
 
 [sub_resource type="Gradient" id="Gradient_star_tex"]
 offsets = PackedFloat32Array(0, 0.5, 1)
@@ -62,6 +17,18 @@ colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.35, 1, 1, 1, 0)
 gradient = SubResource("Gradient_star_tex")
 width = 32
 height = 32
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[sub_resource type="Gradient" id="Gradient_glow"]
+offsets = PackedFloat32Array(0, 0.45, 1)
+colors = PackedColorArray(0.21, 0.78, 1, 0.16, 0.12, 0.45, 0.9, 0.08, 0.21, 0.78, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_glow"]
+gradient = SubResource("Gradient_glow")
+width = 256
+height = 256
 fill = 1
 fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(0.5, 0)
@@ -123,16 +90,6 @@ shadow_color = Color(0.1, 0.66, 1, 0.35)
 shadow_size = 10
 shadow_offset = Vector2(0, 4)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
-bg_color = Color(0.25, 0.75, 1, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-shadow_color = Color(0.25, 0.75, 1, 0.45)
-shadow_size = 14
-shadow_offset = Vector2(0, 4)
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
 bg_color = Color(0.06, 0.5, 0.85, 1)
 corner_radius_top_left = 10
@@ -143,7 +100,17 @@ shadow_color = Color(0.06, 0.5, 0.85, 0.3)
 shadow_size = 6
 shadow_offset = Vector2(0, 2)
 
-[node name="Login" type="Control"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.25, 0.75, 1, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.25, 0.75, 1, 0.45)
+shadow_size = 14
+shadow_offset = Vector2(0, 4)
+
+[node name="Login" type="Control" unique_id=314463142]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -152,66 +119,64 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_login")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=1973211603]
+material = ExtResource("2_sbb5b")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = SubResource("GradientTexture2D_bg")
+texture = ExtResource("3_h43q7")
 expand_mode = 1
 stretch_mode = 1
 
-[node name="Stars" type="GPUParticles2D" parent="."]
-texture = SubResource("GradientTexture2D_star_tex")
-process_material = SubResource("ParticleProcessMaterial_star")
+[node name="Stars" type="GPUParticles2D" parent="." unique_id=1783772133]
 amount = 120
-lifetime = 8.0
-visibility_rect = Rect2(-1200, -700, 2400, 1400)
-
-[node name="BrightStars" type="GPUParticles2D" parent="."]
 texture = SubResource("GradientTexture2D_star_tex")
-process_material = SubResource("ParticleProcessMaterial_bright")
-amount = 16
-lifetime = 4.0
-visibility_rect = Rect2(-1200, -700, 2400, 1400)
+lifetime = 8.0
+visibility_rect = Rect2(-50, -50, 1252, 748)
+process_material = ExtResource("4_2pfwv")
 
-[node name="Glow" type="TextureRect" parent="."]
+[node name="BrightStars" type="GPUParticles2D" parent="." unique_id=1745905207]
+amount = 16
+texture = SubResource("GradientTexture2D_star_tex")
+lifetime = 4.0
+visibility_rect = Rect2(-50, -50, 1252, 748)
+process_material = ExtResource("5_j6hnr")
+
+[node name="Glow" type="TextureRect" parent="." unique_id=1607501142]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
 offset_left = -350.0
 offset_top = -350.0
 offset_right = 350.0
 offset_bottom = 350.0
-grow_horizontal = 2
-grow_vertical = 2
 texture = SubResource("GradientTexture2D_glow")
 expand_mode = 1
 stretch_mode = 1
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=67861928]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 2.0
+offset_top = -5.0
+offset_right = 2.0
+offset_bottom = -5.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Panel" type="PanelContainer" parent="CenterContainer"]
-layout_mode = 2
+[node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=1119178047]
 custom_minimum_size = Vector2(460, 0)
+layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel"]
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel" unique_id=552042267]
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="Title" type="Label" parent="CenterContainer/Panel/VBox"]
+[node name="Title" type="Label" parent="CenterContainer/Panel/VBox" unique_id=1263231838]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.36, 0.82, 1, 1)
 theme_override_colors/font_shadow_color = Color(0.15, 0.7, 1, 0.4)
@@ -223,7 +188,7 @@ theme_override_font_sizes/font_size = 46
 text = "文明模拟器"
 horizontal_alignment = 1
 
-[node name="EnTitle" type="Label" parent="CenterContainer/Panel/VBox"]
+[node name="EnTitle" type="Label" parent="CenterContainer/Panel/VBox" unique_id=879860096]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.35, 0.75, 1, 0.55)
 theme_override_fonts/font = ExtResource("2_font_normal")
@@ -231,7 +196,7 @@ theme_override_font_sizes/font_size = 11
 text = "WENMING · CIVILIZATION SIMULATOR"
 horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="CenterContainer/Panel/VBox"]
+[node name="Subtitle" type="Label" parent="CenterContainer/Panel/VBox" unique_id=194421283]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.58, 0.64, 0.78, 1)
 theme_override_fonts/font = ExtResource("2_font_normal")
@@ -239,22 +204,22 @@ theme_override_font_sizes/font_size = 15
 text = "登录后开始你的文明之旅"
 horizontal_alignment = 1
 
-[node name="Divider" type="ColorRect" parent="CenterContainer/Panel/VBox"]
-layout_mode = 2
+[node name="Divider" type="ColorRect" parent="CenterContainer/Panel/VBox" unique_id=1114851834]
 custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
 color = Color(0.35, 0.7, 1, 0.15)
 
-[node name="NameLabel" type="Label" parent="CenterContainer/Panel/VBox"]
+[node name="NameLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=41482051]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.68, 0.82, 1)
 theme_override_fonts/font = ExtResource("2_font_normal")
 theme_override_font_sizes/font_size = 13
 text = "玩家昵称"
 
-[node name="NameInput" type="LineEdit" parent="CenterContainer/Panel/VBox"]
+[node name="NameInput" type="LineEdit" parent="CenterContainer/Panel/VBox" unique_id=697728028]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.94, 1, 1)
 theme_override_colors/font_placeholder_color = Color(0.45, 0.5, 0.65, 1)
 theme_override_colors/caret_color = Color(0.36, 0.82, 1, 1)
@@ -265,7 +230,7 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_input_focus")
 placeholder_text = "请输入玩家昵称"
 max_length = 16
 
-[node name="ErrorLabel" type="Label" parent="CenterContainer/Panel/VBox"]
+[node name="ErrorLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=872686416]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.35, 0.4, 1)
@@ -276,21 +241,21 @@ theme_override_font_sizes/font_size = 13
 text = "请输入玩家昵称"
 horizontal_alignment = 1
 
-[node name="StartButton" type="Button" parent="CenterContainer/Panel/VBox"]
+[node name="StartButton" type="Button" parent="CenterContainer/Panel/VBox" unique_id=1795049507]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.9, 0.96, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_fonts/font = ExtResource("3_font_bold")
 theme_override_font_sizes/font_size = 18
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 text = "开始游戏"
 
-[node name="Footer" type="Label" parent="."]
+[node name="Footer" type="Label" parent="." unique_id=1795058114]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0

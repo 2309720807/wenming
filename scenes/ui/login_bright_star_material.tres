@@ -1,0 +1,17 @@
+[gd_resource type="ParticleProcessMaterial" format=3 uid="uid://dwtx2va0470c"]
+
+[sub_resource type="Gradient" id="Gradient_bright_1"]
+offsets = PackedFloat32Array(0, 0.35, 0.7, 1)
+colors = PackedColorArray(0.8, 0.88, 1, 0, 0.8, 0.88, 1, 0.95, 0.8, 0.88, 1, 0.45, 0.8, 0.88, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_bright_1"]
+gradient = SubResource("Gradient_bright_1")
+
+[resource]
+emission_shape_offset = Vector3(576, 324, 0)
+emission_shape = 3
+emission_box_extents = Vector3(576, 324, 0)
+gravity = Vector3(0, 0, 0)
+scale_min = 1.4
+scale_max = 2.6
+color_ramp = SubResource("GradientTexture1D_bright_1")
