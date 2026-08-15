@@ -14,8 +14,12 @@
 
 ## 当前进度
 
-- 原型 Demo：英雄俯视角移动射击（WASD 移动 + 鼠标瞄准 + 左键射击），含测试敌人、边界墙
-- 场景：`scenes/main/main.tscn` 为主场景，编辑器按 F5 直接运行
+- **登录界面**（当前主场景 `scenes/ui/login.tscn`，编辑器按 F5 直接运行）：
+  - 视觉完成：shader 对角线渐变背景（左上亮蓝 → 右下深蓝黑）、双层星空粒子（小星闪烁 + 亮星光晕脉动）、半透明圆角面板、青色发光标题、按钮悬停/按下态
+  - 字体：思源黑体（Source Han Sans CN，OFL 开源许可，Normal / Bold / Heavy 三字重，位于 `assets/fonts/`）
+  - 登录逻辑：昵称输入校验 + 错误提示淡入（`scripts/ui/login.gd`）
+- 已修复：场景 uid 与 `.uid` 文件不一致导致背景白屏的问题（若新增/改名场景，注意保持二者一致）
+- 原型战斗 Demo 已清空，后续按设计文档推进核心循环（经营 → 出击 → 生存压力）
 
 ## 运行要求
 
@@ -26,12 +30,23 @@
 
 | 路径 | 说明 |
 | ---- | ---- |
-| `scenes/` | 游戏场景（main / player / combat / base / puzzle / ui） |
-| `scripts/` | GDScript 脚本 |
-| `assets/` | 美术 / 音频资源 |
+| `scenes/` | 游戏场景（ui / base / puzzle 等，按模块划分） |
+| `scripts/` | GDScript 脚本（外部 `.gd`，不在场景内嵌逻辑） |
+| `assets/` | 美术 / 音频 / 字体资源 |
 | `data/` | 数据文件（JSON 等） |
 | `docs/design/` | 游戏设计文档 |
 | `addons/` | 本地插件（**已被 git 忽略，不随仓库分发**） |
+
+## 脚本工具（重要）
+
+| 脚本 | 用途 | 说明 |
+| ---- | ---- | ---- |
+| `start.bat` | 开工 | 检查云端占用锁（他设备锁则禁止）→ 检查本地残留改动（云端被改则禁止推送）→ 拉取最新 → 建立本设备占用锁。参数：`/y` 迷你收工自动确认、`/nopause` 不暂停 |
+| `save_local.bat` | 本地存档 | 提交所有改动到本地 git（不推送，可随时使用） |
+| `push.bat` | 收工 | 提交并推送所有改动 → 释放占用锁。提交说明可用首参数或环境变量 `COMMIT_MSG` 指定，`/nopause` 不暂停 |
+| `history.bat` | 历史查看 / 回档 | 交互菜单或参数模式：`view` 历史、`show <提交号>` 改动详情、`file <提交号> <路径>` 历史文件内容、`checkout <提交号>` 临时切换试运行（`git checkout main` 切回）、`reset <提交号> /y` 永久回退（危险，必须显式确认） |
+
+> 请只通过上述脚本操作云端：直接 `git push` 会被 pre-push 钩子拦截，除非满足收工流程条件（`ALLOW_PUSH`）或仅推送锁文件。
 
 ## 多人协作（重要）
 
@@ -41,4 +56,4 @@
 - **本地存档**：双击 `save_local.bat`（仅提交本地，不推送）
 - **收工**：双击 `push.bat`（提交推送所有改动 + 释放占用锁）
 
-详细规则请阅读 **[`GITHUB_RULES.md`](GITHUB_RULES.md)** 与 [`AGENTS.md`](AGENTS.md)。请只通过上述脚本操作云端，直接 `git push` 会被钩子拦截。
+详细规则请阅读 **[`GITHUB_RULES.md`](GITHUB_RULES.md)** 与 [`AGENTS.md`](AGENTS.md)。
