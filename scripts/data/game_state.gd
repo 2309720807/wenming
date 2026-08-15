@@ -16,6 +16,9 @@ signal metal_changed(new_value: float)
 signal tech_changed(new_value: float)
 signal culture_changed(new_value: float)
 
+# === 玩家数据 ===
+var player_name: String = ""
+
 # === 游戏时间 ===
 var year: int = 1
 var month: int = 1
@@ -27,6 +30,7 @@ var gold_rate: float = 5.0
 var population: int = 10
 var pop_max: int = 50
 var pop_growth_rate: float = 0.2
+var pop_growth_accumulator: float = 0.0  # 人口增长的小数累积，避免取整丢失
 
 var happiness: int = 75
 
@@ -67,6 +71,16 @@ func add_gold(amount: float) -> void:
 func set_population(value: int) -> void:
 	population = clampi(value, 0, pop_max)
 	population_changed.emit(population, pop_max)
+
+
+func accumulate_population_growth(amount: float) -> void:
+	## 累积人口增长值，满 1 时转化为实际人口。
+	## 若直接取整，每月 0.x 的增长率会被丢弃，导致人口永不增长。
+	pop_growth_accumulator += amount
+	if pop_growth_accumulator >= 1.0:
+		var grown: int = int(pop_growth_accumulator)
+		pop_growth_accumulator -= grown
+		set_population(population + grown)
 
 
 func set_happiness(value: int) -> void:
