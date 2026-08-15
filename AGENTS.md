@@ -50,6 +50,10 @@
 - 不在场景内嵌脚本（`_process` 等逻辑写在外部 `.gd` 文件），除非用户明确要求。
 - 路径一律使用 `res://` 绝对路径。
 - 不硬编码魔法数字，使用 `@export` 或常量。
+- **字体规范（必须遵守）**：
+  - 标题/按钮文字：思源黑体（Source Han Sans CN），Heavy 或 Bold 字重
+  - 正文/描述文字：思源宋体（Source Han Serif CN），Regular 或 Bold 字重
+  - 字体文件位于 `assets/fonts/`，通过 theme 统一管理
 
 ## 3.1 模块化规则（必须遵守）
 

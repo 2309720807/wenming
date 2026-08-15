@@ -33,6 +33,10 @@
   - 比例锁定 16:9（`aspect="keep"`）
 
 - 字体：思源黑体（Source Han Sans CN，OFL 开源许可，Normal / Bold / Heavy 三字重，位于 `assets/fonts/`）
+- 字体规范：
+  - 标题/按钮文字：思源黑体（Heavy 或 Bold）
+  - 正文/描述文字：思源宋体（Regular 或 Bold，需下载）
+  - 通过 `assets/fonts/default_theme.tres` 统一管理
 
 ## 运行要求
 
