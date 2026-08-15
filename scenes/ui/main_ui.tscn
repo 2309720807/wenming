@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/main_ui.gd" id="1_main_ui"]
 [ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Bold.ttf" id="2_font_bold"]
@@ -6,6 +6,8 @@
 [ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Heavy.ttf" id="4_font_heavy"]
 [ext_resource type="Material" path="res://scenes/ui/main_ui_bg_material.tres" id="5_bg_mat"]
 [ext_resource type="Material" path="res://scenes/ui/login_star_material.tres" id="6_star_mat"]
+[ext_resource type="Script" path="res://scripts/ui/message_log.gd" id="7_msg_log"]
+[ext_resource type="FontFile" path="res://assets/fonts/SourceHanSerifCN-Regular.otf" id="8_font_serif"]
 
 [sub_resource type="Gradient" id="Gradient_star"]
 offsets = PackedFloat32Array(0, 0.3, 1)
@@ -442,11 +444,12 @@ theme_override_font_sizes/font_size = 14
 text = "消息日志"
 
 [node name="MessageLog" type="RichTextLabel" parent="MessagePanel/VBox"]
+script = ExtResource("7_msg_log")
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/default_color = Color(0.65, 0.78, 0.92, 0.85)
-theme_override_fonts/normal_font = ExtResource("3_font_normal")
+theme_override_fonts/normal_font = ExtResource("8_font_serif")
 theme_override_font_sizes/normal_font_size = 14
 bbcode_enabled = true
 scroll_following = true

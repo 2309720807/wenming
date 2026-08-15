@@ -32,6 +32,7 @@ func _on_start_pressed(_text: String = "") -> void:
 		_show_error("请输入玩家昵称")
 		return
 	player_name = name_value
+	GameState.player_name = player_name  # 存入数据层，供主界面等模块使用
 	error_label.visible = false
 	print("登录成功，玩家：", player_name)
 	get_tree().change_scene_to_file("res://scenes/ui/main_ui.tscn")

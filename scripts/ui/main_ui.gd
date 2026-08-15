@@ -27,26 +27,19 @@ extends Control
 @onready var btn_speed3: Button = %BtnSpeed3
 
 # === 中央区域 ===
-@onready var center_container: CenterContainer = %CenterArea
 @onready var placeholder_label: Label = %PlaceholderLabel
 
-# === 消息日志 ===
-@onready var message_log: RichTextLabel = %MessageLog
-
-# === 当前选中的模块 ===
-var current_module: String = ""
-
-# === 引用 Autoload ===
-var game_state: Node
-var time_manager: Node
+# === 消息日志（独立组件：scripts/ui/message_log.gd）===
+@onready var message_log: MessageLog = %MessageLog
 
 
 func _ready() -> void:
-	game_state = get_node_or_null("/root/GameState")
-	time_manager = get_node_or_null("/root/TimeManager")
 	_connect_signals()
 	_update_all_labels()
-	_add_message("欢迎来到文明模拟器！你的文明刚刚起步。")
+	var player_display: String = GameState.player_name
+	if player_display.is_empty():
+		player_display = "引导者"
+	message_log.add_message("欢迎你，%s！你的文明刚刚起步。" % player_display)
 
 
 func _connect_signals() -> void:
@@ -64,61 +57,57 @@ func _connect_signals() -> void:
 	btn_speed2.pressed.connect(_on_speed_pressed.bind(2.0))
 	btn_speed3.pressed.connect(_on_speed_pressed.bind(3.0))
 
-	# GameState 信号
-	if game_state:
-		game_state.year_changed.connect(_on_year_changed)
-		game_state.month_changed.connect(_on_month_changed)
-		game_state.gold_changed.connect(_on_gold_changed)
-		game_state.population_changed.connect(_on_population_changed)
-		game_state.happiness_changed.connect(_on_happiness_changed)
-		game_state.tech_changed.connect(_on_tech_changed)
-		game_state.culture_changed.connect(_on_culture_changed)
+	# GameState 信号（Autoload 单例，全局可访问）
+	GameState.year_changed.connect(_on_year_changed)
+	GameState.month_changed.connect(_on_month_changed)
+	GameState.gold_changed.connect(_on_gold_changed)
+	GameState.population_changed.connect(_on_population_changed)
+	GameState.happiness_changed.connect(_on_happiness_changed)
+	GameState.tech_changed.connect(_on_tech_changed)
+	GameState.culture_changed.connect(_on_culture_changed)
 
 	# TimeManager 信号
-	if time_manager:
-		time_manager.speed_changed.connect(_on_speed_changed)
-		time_manager.paused_changed.connect(_on_paused_changed)
+	TimeManager.speed_changed.connect(_on_speed_changed)
+	TimeManager.paused_changed.connect(_on_paused_changed)
 
 
 func _update_all_labels() -> void:
-	if not game_state:
-		return
-	time_label.text = game_state.get_time_display()
-	gold_label.text = game_state.get_gold_display()
-	population_label.text = game_state.get_population_display()
-	happiness_label.text = game_state.get_happiness_display()
-	tech_label.text = game_state.get_tech_display()
-	culture_label.text = game_state.get_culture_display()
+	time_label.text = GameState.get_time_display()
+	gold_label.text = GameState.get_gold_display()
+	population_label.text = GameState.get_population_display()
+	happiness_label.text = GameState.get_happiness_display()
+	tech_label.text = GameState.get_tech_display()
+	culture_label.text = GameState.get_culture_display()
 
 
 # === 信号回调 ===
 
 func _on_year_changed(_new_year: int) -> void:
-	time_label.text = game_state.get_time_display()
+	time_label.text = GameState.get_time_display()
 
 
 func _on_month_changed(_new_month: int) -> void:
-	time_label.text = game_state.get_time_display()
+	time_label.text = GameState.get_time_display()
 
 
 func _on_gold_changed(_new_value: float, _rate: float) -> void:
-	gold_label.text = game_state.get_gold_display()
+	gold_label.text = GameState.get_gold_display()
 
 
 func _on_population_changed(_new_value: int, _max_value: int) -> void:
-	population_label.text = game_state.get_population_display()
+	population_label.text = GameState.get_population_display()
 
 
 func _on_happiness_changed(_new_value: int) -> void:
-	happiness_label.text = game_state.get_happiness_display()
+	happiness_label.text = GameState.get_happiness_display()
 
 
 func _on_tech_changed(_new_value: float) -> void:
-	tech_label.text = game_state.get_tech_display()
+	tech_label.text = GameState.get_tech_display()
 
 
 func _on_culture_changed(_new_value: float) -> void:
-	culture_label.text = game_state.get_culture_display()
+	culture_label.text = GameState.get_culture_display()
 
 
 func _on_speed_changed(new_speed: float) -> void:
@@ -128,15 +117,14 @@ func _on_speed_changed(new_speed: float) -> void:
 func _on_paused_changed(is_paused: bool) -> void:
 	btn_pause.text = "▶" if is_paused else "⏸"
 	if is_paused:
-		_add_message("游戏已暂停")
+		message_log.add_message("游戏已暂停")
 	else:
-		_add_message("游戏继续")
+		message_log.add_message("游戏继续")
 
 
 # === 模块导航 ===
 
 func _on_module_pressed(module_name: String) -> void:
-	current_module = module_name
 	_highlight_active_button(module_name)
 	_show_module_placeholder(module_name)
 
@@ -177,13 +165,11 @@ func _show_module_placeholder(module_name: String) -> void:
 # === 时间控制 ===
 
 func _on_pause_pressed() -> void:
-	if time_manager:
-		time_manager.toggle_pause()
+	TimeManager.toggle_pause()
 
 
 func _on_speed_pressed(speed: float) -> void:
-	if time_manager:
-		time_manager.set_speed(speed)
+	TimeManager.set_speed(speed)
 
 
 func _update_speed_buttons(active_speed: int) -> void:
@@ -194,10 +180,4 @@ func _update_speed_buttons(active_speed: int) -> void:
 		1: btn_speed1.modulate = Color(1, 1, 1, 1.0)
 		2: btn_speed2.modulate = Color(1, 1, 1, 1.0)
 		3: btn_speed3.modulate = Color(1, 1, 1, 1.0)
-	_add_message("时间速度：%dx" % active_speed)
-
-
-# === 消息日志 ===
-
-func _add_message(text: String) -> void:
-	message_log.append_text("[color=#88aacc]%s[/color]\n" % text)
+	message_log.add_message("时间速度：%dx" % active_speed)
