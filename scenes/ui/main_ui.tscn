@@ -20,14 +20,14 @@ fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(0.5, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_top_bar"]
-bg_color = Color(0.03, 0.05, 0.12, 0.85)
-border_width_bottom = 1
-border_color = Color(0.2, 0.4, 0.7, 0.2)
+bg_color = Color(0.03, 0.05, 0.12, 0.9)
+border_width_bottom = 2
+border_color = Color(0.2, 0.4, 0.7, 0.3)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_bottom_bar"]
-bg_color = Color(0.03, 0.05, 0.12, 0.85)
-border_width_top = 1
-border_color = Color(0.2, 0.4, 0.7, 0.2)
+bg_color = Color(0.03, 0.05, 0.12, 0.9)
+border_width_top = 2
+border_color = Color(0.2, 0.4, 0.7, 0.3)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
 bg_color = Color(0.05, 0.08, 0.16, 0.9)
@@ -42,79 +42,61 @@ corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_msg"]
-bg_color = Color(0.03, 0.05, 0.10, 0.7)
+bg_color = Color(0.03, 0.05, 0.10, 0.8)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.2, 0.4, 0.7, 0.15)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+border_color = Color(0.2, 0.4, 0.7, 0.2)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_btn_normal"]
-bg_color = Color(0.08, 0.15, 0.30, 0.9)
+bg_color = Color(0.08, 0.15, 0.30, 0.95)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.2, 0.45, 0.8, 0.3)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+border_width_bottom = 2
+border_color = Color(0.2, 0.45, 0.8, 0.4)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.0, 0.0, 0.0, 0.3)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_btn_hover"]
-bg_color = Color(0.12, 0.25, 0.50, 0.95)
+bg_color = Color(0.12, 0.25, 0.50, 1.0)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.3, 0.6, 1.0, 0.5)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.15, 0.4, 0.8, 0.2)
-shadow_size = 8
+border_width_bottom = 2
+border_color = Color(0.3, 0.6, 1.0, 0.6)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.15, 0.4, 0.8, 0.35)
+shadow_size = 10
+shadow_offset = Vector2(0, 3)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_btn_pressed"]
-bg_color = Color(0.06, 0.12, 0.25, 0.95)
+bg_color = Color(0.06, 0.12, 0.25, 1.0)
 border_width_left = 1
-border_width_top = 1
+border_width_top = 2
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.15, 0.35, 0.7, 0.4)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_end_normal"]
-bg_color = Color(0.15, 0.55, 0.35, 0.95)
+border_color = Color(0.15, 0.35, 0.7, 0.5)
 corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
-shadow_color = Color(0.1, 0.5, 0.3, 0.3)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_end_hover"]
-bg_color = Color(0.2, 0.65, 0.45, 1.0)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-shadow_color = Color(0.15, 0.6, 0.4, 0.4)
-shadow_size = 12
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_end_pressed"]
-bg_color = Color(0.1, 0.45, 0.28, 1.0)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+shadow_color = Color(0.0, 0.0, 0.0, 0.2)
+shadow_size = 4
+shadow_offset = Vector2(0, 1)
 
 [sub_resource type="Gradient" id="Gradient_glow"]
 offsets = PackedFloat32Array(0, 0.3, 1)
@@ -169,74 +151,74 @@ stretch_mode = 1
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 52.0
+offset_bottom = 58.0
 theme_override_styles/panel = SubResource("StyleBox_top_bar")
 
 [node name="HBox" type="HBoxContainer" parent="TopBar"]
 layout_mode = 2
-theme_override_constants/separation = 30
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 10
+theme_override_constants/separation = 32
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 12
 
 [node name="Title" type="Label" parent="TopBar/HBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.8, 1, 0.9)
+theme_override_colors/font_color = Color(0.4, 0.82, 1, 0.95)
 theme_override_fonts/font = ExtResource("4_font_heavy")
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 24
 text = "文明模拟器"
 
 [node name="Sep1" type="VSeparator" parent="TopBar/HBox"]
 layout_mode = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 24
 
 [node name="TimeLabel" type="Label" parent="TopBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
+theme_override_colors/font_color = Color(0.75, 0.85, 1, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 text = "第 1 年 第 1 月"
 
 [node name="GoldLabel" type="Label" parent="TopBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
-theme_override_fonts/font = ExtResource("3_font_normal")
-theme_override_font_sizes/font_size = 14
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 16
 text = "金币 100"
 
 [node name="PopulationLabel" type="Label" parent="TopBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.85, 0.6, 1)
-theme_override_fonts/font = ExtResource("3_font_normal")
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.4, 0.88, 0.65, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 16
 text = "人口 10/50"
 
 [node name="HappinessLabel" type="Label" parent="TopBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.7, 0.4, 1)
-theme_override_fonts/font = ExtResource("3_font_normal")
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 0.72, 0.4, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 16
 text = "幸福度 75%"
 
 [node name="TechLabel" type="Label" parent="TopBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.7, 1, 1)
-theme_override_fonts/font = ExtResource("3_font_normal")
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.4, 0.72, 1, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 16
 text = "科技 0%"
 
 [node name="CultureLabel" type="Label" parent="TopBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.5, 1, 1)
-theme_override_fonts/font = ExtResource("3_font_normal")
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.82, 0.55, 1, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 16
 text = "文化 0%"
 
 [node name="Spacer" type="Control" parent="TopBar/HBox"]
@@ -245,9 +227,9 @@ size_flags_horizontal = 3
 
 [node name="VersionLabel" type="Label" parent="TopBar/HBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.5, 0.65, 0.5)
+theme_override_colors/font_color = Color(0.45, 0.55, 0.7, 0.55)
 theme_override_fonts/font = ExtResource("3_font_normal")
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "v0.1"
 
 [node name="CenterArea" type="CenterContainer" parent="."]
@@ -256,17 +238,17 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = 60.0
-offset_bottom = -70.0
+offset_top = 66.0
+offset_bottom = -76.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="PlaceholderLabel" type="Label" parent="CenterArea"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.35, 0.5, 0.75, 0.6)
-theme_override_fonts/font = ExtResource("3_font_normal")
-theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.38, 0.55, 0.8, 0.65)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 24
 text = "中央区域：地图/城市视图"
 horizontal_alignment = 1
 
@@ -276,29 +258,29 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -62.0
+offset_top = -70.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBox_bottom_bar")
 
 [node name="HBox" type="HBoxContainer" parent="BottomBar"]
 layout_mode = 2
-theme_override_constants/separation = 10
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 10
+theme_override_constants/separation = 12
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 12
 alignment = 1
 
 [node name="BtnPopulace" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 42)
+custom_minimum_size = Vector2(160, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.9, 0.75, 1)
-theme_override_colors/font_hover_color = Color(0.8, 1, 0.9, 1)
-theme_override_colors/font_pressed_color = Color(0.5, 0.8, 0.65, 1)
+theme_override_colors/font_color = Color(0.6, 0.92, 0.78, 1)
+theme_override_colors/font_hover_color = Color(0.8, 1, 0.92, 1)
+theme_override_colors/font_pressed_color = Color(0.5, 0.82, 0.68, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -306,13 +288,13 @@ text = "人口与民生"
 
 [node name="BtnTech" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 42)
+custom_minimum_size = Vector2(160, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.7, 1, 1)
-theme_override_colors/font_hover_color = Color(0.6, 0.85, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.3, 0.6, 0.9, 1)
+theme_override_colors/font_color = Color(0.4, 0.72, 1, 1)
+theme_override_colors/font_hover_color = Color(0.6, 0.88, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.3, 0.62, 0.92, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -320,13 +302,13 @@ text = "科技与研发"
 
 [node name="BtnEconomy" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 42)
+custom_minimum_size = Vector2(160, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
-theme_override_colors/font_hover_color = Color(1, 0.95, 0.5, 1)
-theme_override_colors/font_pressed_color = Color(0.9, 0.75, 0.2, 1)
+theme_override_colors/font_color = Color(1, 0.88, 0.32, 1)
+theme_override_colors/font_hover_color = Color(1, 0.96, 0.52, 1)
+theme_override_colors/font_pressed_color = Color(0.92, 0.78, 0.22, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -334,13 +316,13 @@ text = "经济与资源"
 
 [node name="BtnMilitary" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 42)
+custom_minimum_size = Vector2(160, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.45, 0.4, 1)
-theme_override_colors/font_hover_color = Color(1, 0.6, 0.55, 1)
-theme_override_colors/font_pressed_color = Color(0.9, 0.35, 0.3, 1)
+theme_override_colors/font_color = Color(1, 0.48, 0.42, 1)
+theme_override_colors/font_hover_color = Color(1, 0.62, 0.58, 1)
+theme_override_colors/font_pressed_color = Color(0.92, 0.38, 0.32, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -348,13 +330,13 @@ text = "军事与防御"
 
 [node name="BtnCulture" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 42)
+custom_minimum_size = Vector2(160, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.5, 1, 1)
-theme_override_colors/font_hover_color = Color(0.9, 0.65, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.7, 0.4, 0.9, 1)
+theme_override_colors/font_color = Color(0.82, 0.52, 1, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.68, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.72, 0.42, 0.92, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -362,13 +344,13 @@ text = "文化与外交"
 
 [node name="BtnExplore" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 42)
+custom_minimum_size = Vector2(160, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.85, 0.9, 1)
-theme_override_colors/font_hover_color = Color(0.6, 0.95, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.3, 0.75, 0.8, 1)
+theme_override_colors/font_color = Color(0.4, 0.88, 0.92, 1)
+theme_override_colors/font_hover_color = Color(0.6, 0.96, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.3, 0.78, 0.82, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -379,13 +361,13 @@ layout_mode = 2
 
 [node name="BtnPause" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(50, 42)
+custom_minimum_size = Vector2(56, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 0.5, 1)
-theme_override_colors/font_pressed_color = Color(0.85, 0.95, 0.9, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 0.7, 1)
+theme_override_colors/font_color = Color(1, 1, 0.52, 1)
+theme_override_colors/font_pressed_color = Color(0.88, 0.96, 0.92, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.72, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 18
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -393,13 +375,13 @@ text = "⏸"
 
 [node name="BtnSpeed1" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(50, 42)
+custom_minimum_size = Vector2(56, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.9, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.85, 0.95, 0.9, 1)
-theme_override_colors/font_hover_color = Color(0.85, 1, 1, 1)
+theme_override_colors/font_color = Color(0.72, 0.92, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.88, 0.96, 1, 1)
+theme_override_colors/font_hover_color = Color(0.88, 1, 1, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -407,13 +389,13 @@ text = "1x"
 
 [node name="BtnSpeed2" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(50, 42)
+custom_minimum_size = Vector2(56, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.9, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.85, 0.95, 0.9, 1)
-theme_override_colors/font_hover_color = Color(0.85, 1, 1, 1)
+theme_override_colors/font_color = Color(0.72, 0.92, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.88, 0.96, 1, 1)
+theme_override_colors/font_hover_color = Color(0.88, 1, 1, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -421,13 +403,13 @@ text = "2x"
 
 [node name="BtnSpeed3" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(50, 42)
+custom_minimum_size = Vector2(56, 46)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.9, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.85, 0.95, 0.9, 1)
-theme_override_colors/font_hover_color = Color(0.85, 1, 1, 1)
+theme_override_colors/font_color = Color(0.72, 0.92, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.88, 0.96, 1, 1)
+theme_override_colors/font_hover_color = Color(0.88, 1, 1, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
@@ -440,36 +422,36 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -280.0
-offset_top = -260.0
-offset_right = -10.0
-offset_bottom = -72.0
+offset_left = -300.0
+offset_top = -280.0
+offset_right = -12.0
+offset_bottom = -78.0
 grow_horizontal = 0
 grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBox_msg")
 
 [node name="VBox" type="VBoxContainer" parent="MessagePanel"]
 layout_mode = 2
-theme_override_constants/separation = 4
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 8
+theme_override_constants/separation = 6
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
 
 [node name="Title" type="Label" parent="MessagePanel/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.65, 0.9, 0.7)
+theme_override_colors/font_color = Color(0.42, 0.68, 0.92, 0.75)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 14
 text = "消息日志"
 
 [node name="MessageLog" type="RichTextLabel" parent="MessagePanel/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_colors/default_color = Color(0.6, 0.75, 0.9, 0.8)
+theme_override_colors/default_color = Color(0.65, 0.78, 0.92, 0.85)
 theme_override_fonts/normal_font = ExtResource("3_font_normal")
-theme_override_font_sizes/normal_font_size = 12
+theme_override_font_sizes/normal_font_size = 14
 bbcode_enabled = true
 scroll_following = true
 text = ""
