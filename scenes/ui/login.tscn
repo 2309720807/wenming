@@ -10,25 +10,37 @@
 [ext_resource type="Material" path="res://scenes/ui/login_bright_star_material.tres" id="5_j6hnr"]
 
 [sub_resource type="Gradient" id="Gradient_star_tex"]
-offsets = PackedFloat32Array(0, 0.5, 1)
-colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.35, 1, 1, 1, 0)
+offsets = PackedFloat32Array(0, 0.3, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.8, 1, 1, 1, 0)
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_star_tex"]
 gradient = SubResource("Gradient_star_tex")
-width = 32
-height = 32
+width = 8
+height = 8
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[sub_resource type="Gradient" id="Gradient_star_bright_tex"]
+offsets = PackedFloat32Array(0, 0.2, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.9, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_star_bright_tex"]
+gradient = SubResource("Gradient_star_bright_tex")
+width = 6
+height = 6
 fill = 1
 fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(0.5, 0)
 
 [sub_resource type="Gradient" id="Gradient_glow"]
-offsets = PackedFloat32Array(0, 0.45, 1)
-colors = PackedColorArray(0.21, 0.78, 1, 0.16, 0.12, 0.45, 0.9, 0.08, 0.21, 0.78, 1, 0)
+offsets = PackedFloat32Array(0, 0.3, 1)
+colors = PackedColorArray(0.15, 0.4, 0.8, 0.06, 0.08, 0.2, 0.5, 0.02, 0.15, 0.4, 0.8, 0)
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_glow"]
 gradient = SubResource("Gradient_glow")
-width = 256
-height = 256
+width = 512
+height = 512
 fill = 1
 fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(0.5, 0)
@@ -132,25 +144,25 @@ expand_mode = 1
 stretch_mode = 1
 
 [node name="Stars" type="GPUParticles2D" parent="." unique_id=1783772133]
-amount = 120
+amount = 160
 texture = SubResource("GradientTexture2D_star_tex")
-lifetime = 8.0
-visibility_rect = Rect2(-50, -50, 1252, 748)
+lifetime = 10.0
+visibility_rect = Rect2(-100, -100, 2120, 1280)
 process_material = ExtResource("4_2pfwv")
 
 [node name="BrightStars" type="GPUParticles2D" parent="." unique_id=1745905207]
-amount = 16
-texture = SubResource("GradientTexture2D_star_tex")
-lifetime = 4.0
-visibility_rect = Rect2(-50, -50, 1252, 748)
+amount = 20
+texture = SubResource("GradientTexture2D_star_bright_tex")
+lifetime = 6.0
+visibility_rect = Rect2(-100, -100, 2120, 1280)
 process_material = ExtResource("5_j6hnr")
 
 [node name="Glow" type="TextureRect" parent="." unique_id=1607501142]
 layout_mode = 1
-offset_left = -350.0
-offset_top = -350.0
-offset_right = 350.0
-offset_bottom = 350.0
+offset_left = -500.0
+offset_top = -500.0
+offset_right = 500.0
+offset_bottom = 500.0
 texture = SubResource("GradientTexture2D_glow")
 expand_mode = 1
 stretch_mode = 1

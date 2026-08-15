@@ -1,0 +1,433 @@
+[gd_scene load_steps=24 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/main_ui.gd" id="1_main_ui"]
+[ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Bold.ttf" id="2_font_bold"]
+[ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Normal.ttf" id="3_font_normal"]
+[ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Heavy.ttf" id="4_font_heavy"]
+[ext_resource type="Material" path="res://scenes/ui/main_ui_bg_material.tres" id="5_bg_mat"]
+[ext_resource type="Material" path="res://scenes/ui/login_star_material.tres" id="6_star_mat"]
+
+[sub_resource type="Gradient" id="Gradient_star"]
+offsets = PackedFloat32Array(0, 0.3, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.7, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTex_star"]
+gradient = SubResource("Gradient_star")
+width = 6
+height = 6
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_top_bar"]
+bg_color = Color(0.03, 0.05, 0.12, 0.85)
+border_width_bottom = 1
+border_color = Color(0.2, 0.4, 0.7, 0.2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_bottom_bar"]
+bg_color = Color(0.03, 0.05, 0.12, 0.85)
+border_width_top = 1
+border_color = Color(0.2, 0.4, 0.7, 0.2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
+bg_color = Color(0.05, 0.08, 0.16, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.45, 0.8, 0.25)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_msg"]
+bg_color = Color(0.03, 0.05, 0.10, 0.7)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.4, 0.7, 0.15)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_normal"]
+bg_color = Color(0.08, 0.15, 0.30, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.45, 0.8, 0.3)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_hover"]
+bg_color = Color(0.12, 0.25, 0.50, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.6, 1.0, 0.5)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.15, 0.4, 0.8, 0.2)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_pressed"]
+bg_color = Color(0.06, 0.12, 0.25, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.15, 0.35, 0.7, 0.4)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_end_normal"]
+bg_color = Color(0.15, 0.55, 0.35, 0.95)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.1, 0.5, 0.3, 0.3)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_end_hover"]
+bg_color = Color(0.2, 0.65, 0.45, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.15, 0.6, 0.4, 0.4)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_end_pressed"]
+bg_color = Color(0.1, 0.45, 0.28, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="Gradient" id="Gradient_glow"]
+offsets = PackedFloat32Array(0, 0.3, 1)
+colors = PackedColorArray(0.1, 0.3, 0.7, 0.04, 0.06, 0.15, 0.4, 0.01, 0.1, 0.3, 0.7, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTex_glow"]
+gradient = SubResource("Gradient_glow")
+width = 512
+height = 512
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[node name="MainUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main_ui")
+
+[node name="Background" type="TextureRect" parent="."]
+material = ExtResource("5_bg_mat")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 1
+
+[node name="Stars" type="GPUParticles2D" parent="."]
+amount = 200
+texture = SubResource("GradientTex_star")
+lifetime = 12.0
+visibility_rect = Rect2(-100, -100, 2120, 1280)
+process_material = ExtResource("6_star_mat")
+
+[node name="Glow" type="TextureRect" parent="."]
+layout_mode = 1
+offset_left = -400.0
+offset_top = -400.0
+offset_right = 400.0
+offset_bottom = 400.0
+texture = SubResource("GradientTex_glow")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="TopBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 52.0
+theme_override_styles/panel = SubResource("StyleBox_top_bar")
+
+[node name="HBox" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 30
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 10
+
+[node name="Title" type="Label" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.8, 1, 0.9)
+theme_override_fonts/font = ExtResource("4_font_heavy")
+theme_override_font_sizes/font_size = 20
+text = "文明模拟器"
+
+[node name="Sep1" type="VSeparator" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="TurnLabel" type="Label" parent="TopBar/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+text = "回合 1"
+
+[node name="GoldLabel" type="Label" parent="TopBar/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_fonts/font = ExtResource("3_font_normal")
+theme_override_font_sizes/font_size = 14
+text = "金币 100"
+
+[node name="PopulationLabel" type="Label" parent="TopBar/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.85, 0.6, 1)
+theme_override_fonts/font = ExtResource("3_font_normal")
+theme_override_font_sizes/font_size = 14
+text = "人口 10/50"
+
+[node name="HappinessLabel" type="Label" parent="TopBar/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.7, 0.4, 1)
+theme_override_fonts/font = ExtResource("3_font_normal")
+theme_override_font_sizes/font_size = 14
+text = "幸福度 75%"
+
+[node name="TechLabel" type="Label" parent="TopBar/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.7, 1, 1)
+theme_override_fonts/font = ExtResource("3_font_normal")
+theme_override_font_sizes/font_size = 14
+text = "科技 0%"
+
+[node name="CultureLabel" type="Label" parent="TopBar/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.5, 1, 1)
+theme_override_fonts/font = ExtResource("3_font_normal")
+theme_override_font_sizes/font_size = 14
+text = "文化 0%"
+
+[node name="Spacer" type="Control" parent="TopBar/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VersionLabel" type="Label" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.5, 0.65, 0.5)
+theme_override_fonts/font = ExtResource("3_font_normal")
+theme_override_font_sizes/font_size = 11
+text = "v0.1"
+
+[node name="CenterArea" type="CenterContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 60.0
+offset_bottom = -70.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PlaceholderLabel" type="Label" parent="CenterArea"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.5, 0.75, 0.6)
+theme_override_fonts/font = ExtResource("3_font_normal")
+theme_override_font_sizes/font_size = 20
+text = "中央区域：地图/城市视图"
+horizontal_alignment = 1
+
+[node name="BottomBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -62.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBox_bottom_bar")
+
+[node name="HBox" type="HBoxContainer" parent="BottomBar"]
+layout_mode = 2
+theme_override_constants/separation = 10
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 10
+alignment = 1
+
+[node name="BtnPopulace" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.9, 0.75, 1)
+theme_override_colors/font_hover_color = Color(0.8, 1, 0.9, 1)
+theme_override_colors/font_pressed_color = Color(0.5, 0.8, 0.65, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "人口与民生"
+
+[node name="BtnTech" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.7, 1, 1)
+theme_override_colors/font_hover_color = Color(0.6, 0.85, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.3, 0.6, 0.9, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "科技与研发"
+
+[node name="BtnEconomy" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.5, 1)
+theme_override_colors/font_pressed_color = Color(0.9, 0.75, 0.2, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "经济与资源"
+
+[node name="BtnMilitary" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.45, 0.4, 1)
+theme_override_colors/font_hover_color = Color(1, 0.6, 0.55, 1)
+theme_override_colors/font_pressed_color = Color(0.9, 0.35, 0.3, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "军事与防御"
+
+[node name="BtnCulture" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.5, 1, 1)
+theme_override_colors/font_hover_color = Color(0.9, 0.65, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.7, 0.4, 0.9, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "文化与外交"
+
+[node name="BtnExplore" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.85, 0.9, 1)
+theme_override_colors/font_hover_color = Color(0.6, 0.95, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.3, 0.75, 0.8, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "地图与探索"
+
+[node name="Sep" type="VSeparator" parent="BottomBar/HBox"]
+layout_mode = 2
+
+[node name="BtnEndTurn" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.85, 0.95, 0.9, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleBox_end_normal")
+theme_override_styles/hover = SubResource("StyleBox_end_hover")
+theme_override_styles/pressed = SubResource("StyleBox_end_pressed")
+text = "结束回合 >>"
+
+[node name="MessagePanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -280.0
+offset_top = -260.0
+offset_right = -10.0
+offset_bottom = -72.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBox_msg")
+
+[node name="VBox" type="VBoxContainer" parent="MessagePanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="Title" type="Label" parent="MessagePanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.65, 0.9, 0.7)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 12
+text = "消息日志"
+
+[node name="MessageLog" type="RichTextLabel" parent="MessagePanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.6, 0.75, 0.9, 0.8)
+theme_override_fonts/normal_font = ExtResource("3_font_normal")
+theme_override_font_sizes/normal_font_size = 12
+bbcode_enabled = true
+scroll_following = true
+text = ""

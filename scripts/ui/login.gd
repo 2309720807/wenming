@@ -34,4 +34,4 @@ func _on_start_pressed(_text: String = "") -> void:
 	player_name = name_value
 	error_label.visible = false
 	print("登录成功，玩家：", player_name)
-	# TODO(正式化): 后续跳转到主菜单/基地场景，并写入存档。
+	get_tree().change_scene_to_file("res://scenes/ui/main_ui.tscn")
