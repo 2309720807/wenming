@@ -191,13 +191,13 @@ text = "文明模拟器"
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="TurnLabel" type="Label" parent="TopBar/HBox"]
+[node name="TimeLabel" type="Label" parent="TopBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
 theme_override_font_sizes/font_size = 14
-text = "回合 1"
+text = "第 1 年 第 1 月"
 
 [node name="GoldLabel" type="Label" parent="TopBar/HBox"]
 unique_name_in_owner = true
@@ -377,19 +377,61 @@ text = "地图与探索"
 [node name="Sep" type="VSeparator" parent="BottomBar/HBox"]
 layout_mode = 2
 
-[node name="BtnEndTurn" type="Button" parent="BottomBar/HBox"]
+[node name="BtnPause" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 42)
+custom_minimum_size = Vector2(50, 42)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(1, 1, 0.5, 1)
 theme_override_colors/font_pressed_color = Color(0.85, 0.95, 0.9, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.7, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 15
-theme_override_styles/normal = SubResource("StyleBox_end_normal")
-theme_override_styles/hover = SubResource("StyleBox_end_hover")
-theme_override_styles/pressed = SubResource("StyleBox_end_pressed")
-text = "结束回合 >>"
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "⏸"
+
+[node name="BtnSpeed1" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(50, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.9, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.85, 0.95, 0.9, 1)
+theme_override_colors/font_hover_color = Color(0.85, 1, 1, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "1x"
+
+[node name="BtnSpeed2" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(50, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.9, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.85, 0.95, 0.9, 1)
+theme_override_colors/font_hover_color = Color(0.85, 1, 1, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "2x"
+
+[node name="BtnSpeed3" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(50, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.9, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.85, 0.95, 0.9, 1)
+theme_override_colors/font_hover_color = Color(0.85, 1, 1, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "3x"
 
 [node name="MessagePanel" type="PanelContainer" parent="."]
 layout_mode = 1
