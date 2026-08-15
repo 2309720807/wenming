@@ -1,28 +1,29 @@
 @echo off
+chcp 65001 >nul
 set GIT=F:\software\Git\cmd\git.exe
 cd /d "%~dp0"
 
 echo ==================================
-echo  ±¾µØ´æµµ£¨½ö commit£¬²»ÍÆËÍ GitHub£©
+echo  æœ¬åœ°å­˜æ¡£ï¼ˆä»… commitï¼Œä¸æ¨é€ GitHubï¼‰
 echo ==================================
 
 "%GIT%" add .
 if errorlevel 1 (
-    echo [´íÎó] git add Ê§°Ü
+    echo [é”™è¯¯] git add å¤±è´¥
     pause
     exit /b 1
 )
 
-set /p MSG=ÇëÊäÈë±¾´ÎÌá½»ËµÃ÷£¨Ö±½Ó»Ø³µÔòÊ¹ÓÃ×Ô¶¯ÈÕÆÚ£©:
-if "%MSG%"=="" set MSG=×Ô¶¯Ìá½» %date% %time%
+set /p MSG=è¯·è¾“å…¥æœ¬æ¬¡æäº¤è¯´æ˜ï¼ˆç›´æ¥å›è½¦åˆ™ä½¿ç”¨è‡ªåŠ¨æ—¥æœŸï¼‰:
+if "%MSG%"=="" set MSG=è‡ªåŠ¨æäº¤ %date% %time%
 
 "%GIT%" commit -m "%MSG%"
 if errorlevel 1 (
-    echo [ÌáÊ¾] ¿ÉÄÜÃ»ÓĞ¸Ä¶¯ĞèÒªÌá½»
+    echo [æç¤º] å¯èƒ½æ²¡æœ‰æ”¹åŠ¨éœ€è¦æäº¤
     pause
     exit /b 1
 )
 
 echo.
-echo [Íê³É] ÒÑ±£´æµ½±¾µØ git ´æµµ
+echo [å®Œæˆ] å·²ä¿å­˜åˆ°æœ¬åœ° git å­˜æ¡£
 pause
