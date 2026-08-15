@@ -43,6 +43,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM 支持环境变量 COMMIT_MSG 指定提交说明（避免命令行中文传参问题）
 if not defined MSG if defined COMMIT_MSG set "MSG=%COMMIT_MSG%"
 if not defined MSG (
     set /p MSG=请输入本次提交说明（直接回车用自动消息）:
