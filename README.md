@@ -43,13 +43,24 @@
 
 | 路径 | 说明 |
 | ---- | ---- |
-| `scenes/` | 游戏场景（ui / game 等，按模块划分） |
+| `scenes/` | 游戏场景（按模块划分） |
 | `scenes/ui/` | UI 场景（登录、主界面、各模块子界面） |
+| `scenes/game/` | 游戏世界场景 |
 | `scripts/` | GDScript 脚本（外部 `.gd`，不在场景内嵌逻辑） |
+| `scripts/data/` | 数据层：GameState（游戏状态）、TimeManager（时间管理）等 Autoload 单例 |
+| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd 等） |
+| `scripts/game/` | 游戏逻辑层：战斗、建造、AI 等系统 |
 | `assets/` | 美术 / 音频 / 字体资源 |
 | `data/` | 数据文件（JSON 等） |
 | `docs/design/` | 游戏设计文档 |
 | `addons/` | 本地插件（**已被 git 忽略，不随仓库分发**） |
+
+### Autoload 单例
+
+| 单例名 | 路径 | 说明 |
+| ---- | ---- | ---- |
+| GameState | `scripts/data/game_state.gd` | 游戏状态管理：资源数据、进度数据、信号通知 |
+| TimeManager | `scripts/data/time_manager.gd` | 时间管理：游戏时间、倍率控制、月度更新 |
 
 ## 脚本工具（重要）
 

@@ -62,3 +62,8 @@ shoot={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+
+[autoload]
+
+GameState="*res://scripts/data/game_state.gd"
+TimeManager="*res://scripts/data/time_manager.gd"
