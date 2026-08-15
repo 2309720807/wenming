@@ -1,0 +1,4 @@
+\.git\
+\addons\
+\.godot\
+\backup_exclude.txt
