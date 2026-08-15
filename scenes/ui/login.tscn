@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" path="res://scenes/ui/login_bg_gradient.tres" id="3_h43q7"]
 [ext_resource type="Material" path="res://scenes/ui/login_star_material.tres" id="4_2pfwv"]
 [ext_resource type="FontFile" uid="uid://w7amrbgfchpx" path="res://assets/fonts/SourceHanSansCN-Heavy.ttf" id="4_font_heavy"]
+[ext_resource type="FontFile" path="res://assets/fonts/SourceHanSerifCN-Regular.otf" id="5_font_serif"]
 [ext_resource type="Material" path="res://scenes/ui/login_bright_star_material.tres" id="5_j6hnr"]
 
 [sub_resource type="Gradient" id="Gradient_star_tex"]
@@ -203,7 +204,7 @@ horizontal_alignment = 1
 [node name="EnTitle" type="Label" parent="CenterContainer/Panel/VBox" unique_id=879860096]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.35, 0.75, 1, 0.55)
-theme_override_fonts/font = ExtResource("2_font_normal")
+theme_override_fonts/font = ExtResource("5_font_serif")
 theme_override_font_sizes/font_size = 11
 text = "WENMING · CIVILIZATION SIMULATOR"
 horizontal_alignment = 1
@@ -211,7 +212,7 @@ horizontal_alignment = 1
 [node name="Subtitle" type="Label" parent="CenterContainer/Panel/VBox" unique_id=194421283]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.58, 0.64, 0.78, 1)
-theme_override_fonts/font = ExtResource("2_font_normal")
+theme_override_fonts/font = ExtResource("5_font_serif")
 theme_override_font_sizes/font_size = 15
 text = "登录后开始你的文明之旅"
 horizontal_alignment = 1
@@ -224,7 +225,7 @@ color = Color(0.35, 0.7, 1, 0.15)
 [node name="NameLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=41482051]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.68, 0.82, 1)
-theme_override_fonts/font = ExtResource("2_font_normal")
+theme_override_fonts/font = ExtResource("5_font_serif")
 theme_override_font_sizes/font_size = 13
 text = "玩家昵称"
 
@@ -235,7 +236,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.94, 1, 1)
 theme_override_colors/font_placeholder_color = Color(0.45, 0.5, 0.65, 1)
 theme_override_colors/caret_color = Color(0.36, 0.82, 1, 1)
-theme_override_fonts/font = ExtResource("2_font_normal")
+theme_override_fonts/font = ExtResource("5_font_serif")
 theme_override_font_sizes/font_size = 17
 theme_override_styles/normal = SubResource("StyleBoxFlat_input")
 theme_override_styles/focus = SubResource("StyleBoxFlat_input_focus")
@@ -248,7 +249,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.35, 0.4, 1)
 theme_override_colors/font_shadow_color = Color(1, 0.2, 0.3, 0.3)
 theme_override_constants/shadow_outline_size = 6
-theme_override_fonts/font = ExtResource("2_font_normal")
+theme_override_fonts/font = ExtResource("5_font_serif")
 theme_override_font_sizes/font_size = 13
 text = "请输入玩家昵称"
 horizontal_alignment = 1
@@ -281,7 +282,7 @@ offset_bottom = -10.0
 grow_horizontal = 0
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.55, 0.6, 0.75, 0.45)
-theme_override_fonts/font = ExtResource("2_font_normal")
+theme_override_fonts/font = ExtResource("5_font_serif")
 theme_override_font_sizes/font_size = 11
 text = "v0.1 · 原型验证"
 horizontal_alignment = 2
