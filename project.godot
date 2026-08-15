@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="wenming"
-run/main_scene="res://scenes/ui/main_ui.tscn"
+run/main_scene="res://scenes/ui/login.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -26,13 +26,13 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
-[gui]
-
-theme/custom="res://assets/fonts/default_theme.tres"
-
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/agent/plugin.cfg")
+
+[gui]
+
+theme/custom="res://assets/fonts/default_theme.tres"
 
 [physics]
 
