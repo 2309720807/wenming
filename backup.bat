@@ -14,7 +14,7 @@ if not defined GIT set "GIT=git"
 :GIT_OK
 
 REM ===== Config =====
-set BACKUP_WORKTREE=F:\software\Godot\project\wenmingzengliang
+set BACKUP_WORKTREE=%~dp0wenmingzengliang
 set SOURCE_DIR=%~dp0
 set NO_PAUSE=0
 for %%a in (%*) do (
@@ -50,7 +50,7 @@ mkdir "%BACKUP_DIR%"
 
 REM 3. Copy files using robocopy via PowerShell
 echo [Step 3] Copy project files...
-powershell -Command "robocopy '%SOURCE_DIR%' '%BACKUP_DIR%' /E /XD .git addons .godot /XF backup_exclude.txt backup.bat run_robocopy.bat run_robocopy.ps1 /NFL /NDL /NJH /NJS /NC /NS /NP"
+powershell -Command "robocopy '%SOURCE_DIR%' '%BACKUP_DIR%' /E /XD .git addons .godot wenmingzengliang /XF backup_exclude.txt backup.bat run_robocopy.bat run_robocopy.ps1 /NFL /NDL /NJH /NJS /NC /NS /NP"
 
 REM 4. Commit and push
 echo [Step 4] Commit and push...

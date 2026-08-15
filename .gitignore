@@ -4,3 +4,6 @@
 
 # AlphaAgent 插件（含模型 API 配置，不纳入版本控制）
 /addons/
+
+# 增量备份工作树（独立 git 仓库，不纳入主仓库）
+/wenmingzengliang/
