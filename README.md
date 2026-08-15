@@ -18,7 +18,7 @@
   - 双层星空粒子（小星闪烁 + 亮星光晕脉动）
   - 半透明圆角面板、青色发光标题、按钮悬停/按下态
   - 登录逻辑：昵称输入校验 + 错误提示淡入（`scripts/ui/login.gd`）
-  - 登录成功后跳转到养成主界面
+  - 昵称存入 GameState（`player_name`），登录成功后跳转到养成主界面
 
 - **养成主界面**（`scenes/ui/main_ui.tscn`）：
   - 顶部信息栏：游戏时间（年/月）、金币（含增长率）、人口、幸福度、科技进度、文化进度
@@ -26,17 +26,18 @@
   - 右下角消息日志面板
   - 中央区域（地图/城市视图占位）
   - 深邃星空背景 + 星星粒子 + 光晕
-  - 实时资源增长系统（`scripts/ui/main_ui.gd`）
+  - 实时资源增长系统（`scripts/ui/main_ui.gd`，数据层信号驱动 UI 刷新）
+  - 消息日志独立组件（`scripts/ui/message_log.gd`），欢迎语显示玩家昵称
+  - 全局主题 `assets/fonts/default_theme.tres` 已挂载（`project.godot` → `gui/theme/custom`）
 
 - **窗口设置**：
-  - 1920×1080 分辨率，允许用户缩放窗口
-  - 比例锁定 16:9（`aspect="keep"`）
+  - 1280×720 视口分辨率（测试窗口规范，防止系统窗口遮挡影响测试截图），`canvas_items` 拉伸模式
 
-- 字体：思源黑体（Source Han Sans CN，OFL 开源许可，Normal / Bold / Heavy 三字重，位于 `assets/fonts/`）
+- 字体：思源黑体（Source Han Sans CN，OFL 开源许可，Normal / Bold / Heavy 三字重）+ 思源宋体（Source Han Serif CN，Regular / Variable），位于 `assets/fonts/`
 - 字体规范：
   - 标题/按钮文字：思源黑体（Heavy 或 Bold）
-  - 正文/描述文字：思源宋体（Regular 或 Bold，需下载）
-  - 通过 `assets/fonts/default_theme.tres` 统一管理
+  - 正文/描述文字：思源宋体（Regular 或 Bold）
+  - 通过 `assets/fonts/default_theme.tres` 全局主题统一管理
 
 ## 运行要求
 
@@ -52,7 +53,7 @@
 | `scenes/game/` | 游戏世界场景 |
 | `scripts/` | GDScript 脚本（外部 `.gd`，不在场景内嵌逻辑） |
 | `scripts/data/` | 数据层：GameState（游戏状态）、TimeManager（时间管理）等 Autoload 单例 |
-| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd 等） |
+| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd、message_log.gd 等） |
 | `scripts/game/` | 游戏逻辑层：战斗、建造、AI 等系统 |
 | `assets/` | 美术 / 音频 / 字体资源 |
 | `data/` | 数据文件（JSON 等） |
@@ -63,7 +64,7 @@
 
 | 单例名 | 路径 | 说明 |
 | ---- | ---- | ---- |
-| GameState | `scripts/data/game_state.gd` | 游戏状态管理：资源数据、进度数据、信号通知 |
+| GameState | `scripts/data/game_state.gd` | 游戏状态管理：玩家数据（昵称）、资源数据、进度数据、信号通知 |
 | TimeManager | `scripts/data/time_manager.gd` | 时间管理：游戏时间、倍率控制、月度更新 |
 
 ## 脚本工具（重要）
