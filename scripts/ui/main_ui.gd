@@ -27,7 +27,7 @@ extends Control
 @onready var btn_speed3: Button = %BtnSpeed3
 
 # === 中央区域 ===
-@onready var center_container: CenterContainer = %CenterContainer
+@onready var center_container: CenterContainer = %CenterArea
 @onready var placeholder_label: Label = %PlaceholderLabel
 
 # === 消息日志 ===

@@ -11,16 +11,19 @@ config_version=5
 [application]
 
 config/name="wenming"
-run/main_scene="res://scenes/ui/login.tscn"
+run/main_scene="res://scenes/ui/main_ui.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+GameState="*res://scripts/data/game_state.gd"
+TimeManager="*res://scripts/data/time_manager.gd"
+
 [display]
 
-window/size/viewport_width=1920
-window/size/viewport_height=1080
-window/size/window_width_override=1280
-window/size/window_height_override=720
+window/size/viewport_width=1280
+window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
 [editor_plugins]
@@ -62,8 +65,3 @@ shoot={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
-
-[autoload]
-
-GameState="*res://scripts/data/game_state.gd"
-TimeManager="*res://scripts/data/time_manager.gd"

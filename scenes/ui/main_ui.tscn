@@ -25,21 +25,9 @@ border_width_bottom = 2
 border_color = Color(0.2, 0.4, 0.7, 0.3)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_bottom_bar"]
-bg_color = Color(0.03, 0.05, 0.12, 0.9)
+bg_color = Color(0.03, 0.05, 0.12, 0.92)
 border_width_top = 2
-border_color = Color(0.2, 0.4, 0.7, 0.3)
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
-bg_color = Color(0.05, 0.08, 0.16, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.2, 0.45, 0.8, 0.25)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+border_color = Color(0.2, 0.4, 0.7, 0.35)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_msg"]
 bg_color = Color(0.03, 0.05, 0.10, 0.8)
@@ -134,7 +122,7 @@ stretch_mode = 1
 amount = 200
 texture = SubResource("GradientTex_star")
 lifetime = 12.0
-visibility_rect = Rect2(-100, -100, 2120, 1280)
+visibility_rect = Rect2(-100, -100, 1480, 920)
 process_material = ExtResource("6_star_mat")
 
 [node name="Glow" type="TextureRect" parent="."]
@@ -157,10 +145,14 @@ theme_override_styles/panel = SubResource("StyleBox_top_bar")
 [node name="HBox" type="HBoxContainer" parent="TopBar"]
 layout_mode = 2
 theme_override_constants/separation = 32
-theme_override_constants/margin_left = 40
+theme_override_constants/margin_left = 20
 theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 32
 theme_override_constants/margin_bottom = 12
+
+[node name="LeftSpacer" type="Control" parent="TopBar/HBox"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
 
 [node name="Title" type="Label" parent="TopBar/HBox"]
 layout_mode = 2
@@ -168,6 +160,10 @@ theme_override_colors/font_color = Color(0.4, 0.82, 1, 0.95)
 theme_override_fonts/font = ExtResource("4_font_heavy")
 theme_override_font_sizes/font_size = 24
 text = "文明模拟器"
+
+[node name="TitleSpacer" type="Control" parent="TopBar/HBox"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
 
 [node name="Sep1" type="VSeparator" parent="TopBar/HBox"]
 layout_mode = 2
@@ -238,8 +234,8 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = 66.0
-offset_bottom = -76.0
+offset_top = 58.0
+offset_bottom = -72.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -253,28 +249,28 @@ text = "中央区域：地图/城市视图"
 horizontal_alignment = 1
 
 [node name="BottomBar" type="PanelContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -70.0
+offset_top = -72.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBox_bottom_bar")
 
 [node name="HBox" type="HBoxContainer" parent="BottomBar"]
 layout_mode = 2
-theme_override_constants/separation = 12
-theme_override_constants/margin_left = 28
+theme_override_constants/separation = 8
+theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 28
+theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 12
-alignment = 1
 
 [node name="BtnPopulace" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 46)
+custom_minimum_size = Vector2(140, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.92, 0.78, 1)
 theme_override_colors/font_hover_color = Color(0.8, 1, 0.92, 1)
@@ -288,7 +284,7 @@ text = "人口与民生"
 
 [node name="BtnTech" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 46)
+custom_minimum_size = Vector2(140, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.72, 1, 1)
 theme_override_colors/font_hover_color = Color(0.6, 0.88, 1, 1)
@@ -302,7 +298,7 @@ text = "科技与研发"
 
 [node name="BtnEconomy" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 46)
+custom_minimum_size = Vector2(140, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.88, 0.32, 1)
 theme_override_colors/font_hover_color = Color(1, 0.96, 0.52, 1)
@@ -316,7 +312,7 @@ text = "经济与资源"
 
 [node name="BtnMilitary" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 46)
+custom_minimum_size = Vector2(140, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.48, 0.42, 1)
 theme_override_colors/font_hover_color = Color(1, 0.62, 0.58, 1)
@@ -330,7 +326,7 @@ text = "军事与防御"
 
 [node name="BtnCulture" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 46)
+custom_minimum_size = Vector2(140, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.82, 0.52, 1, 1)
 theme_override_colors/font_hover_color = Color(0.92, 0.68, 1, 1)
@@ -344,7 +340,7 @@ text = "文化与外交"
 
 [node name="BtnExplore" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 46)
+custom_minimum_size = Vector2(140, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.88, 0.92, 1)
 theme_override_colors/font_hover_color = Color(0.6, 0.96, 1, 1)
@@ -361,7 +357,7 @@ layout_mode = 2
 
 [node name="BtnPause" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 46)
+custom_minimum_size = Vector2(46, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 0.52, 1)
 theme_override_colors/font_pressed_color = Color(0.88, 0.96, 0.92, 1)
@@ -375,7 +371,7 @@ text = "⏸"
 
 [node name="BtnSpeed1" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 46)
+custom_minimum_size = Vector2(46, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.92, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.88, 0.96, 1, 1)
@@ -389,7 +385,7 @@ text = "1x"
 
 [node name="BtnSpeed2" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 46)
+custom_minimum_size = Vector2(46, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.92, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.88, 0.96, 1, 1)
@@ -403,7 +399,7 @@ text = "2x"
 
 [node name="BtnSpeed3" type="Button" parent="BottomBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 46)
+custom_minimum_size = Vector2(46, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.92, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.88, 0.96, 1, 1)
@@ -422,9 +418,9 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -300.0
-offset_top = -280.0
-offset_right = -12.0
+offset_left = -260.0
+offset_top = -220.0
+offset_right = -10.0
 offset_bottom = -78.0
 grow_horizontal = 0
 grow_vertical = 0
