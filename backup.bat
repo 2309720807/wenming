@@ -3,7 +3,7 @@ chcp 936 >nul
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-REM ===== Git 路径检测（与 push.bat 一致）=====
+REM ===== Git path detection =====
 set GIT=F:\software\Git\cmd\git.exe
 if exist "%GIT%" goto :GIT_OK
 set "GIT="
@@ -13,8 +13,8 @@ for %%p in ("C:\Program Files\Git\cmd\git.exe" "C:\Program Files\Git\bin\git.exe
 if not defined GIT set "GIT=git"
 :GIT_OK
 
-REM ===== 路径配置 =====
-set BACKUP_WORKTREE=F:\software\Git\wenmingzengliang.git
+REM ===== Config =====
+set BACKUP_WORKTREE=F:\software\Godot\project\wenmingzengliang
 set SOURCE_DIR=%~dp0
 set NO_PAUSE=0
 for %%a in (%*) do (
@@ -23,48 +23,48 @@ for %%a in (%*) do (
 )
 
 echo ==================================
-echo  增量备份：复制项目到备份仓库
+echo  Incremental Backup
 echo ==================================
 
-REM 1. 进入备份仓库 worktree，拉取最新
-echo [步骤1] 进入备份仓库并拉取最新...
+REM 1. Enter backup worktree and pull latest
+echo [Step 1] Enter backup worktree...
 cd /d "%BACKUP_WORKTREE%"
 if errorlevel 1 (
-    echo [错误] 无法进入备份仓库路径: %BACKUP_WORKTREE%
+    echo [ERROR] Cannot access: %BACKUP_WORKTREE%
     if not "%NO_PAUSE%"=="1" pause
     exit /b 1
 )
 
 "%GIT%" pull origin main
 if errorlevel 1 (
-    echo [警告] 拉取远程失败，尝试继续...
+    echo [WARN] Pull failed, continuing...
 )
 
-REM 2. 获取当前时间戳作为文件夹名
+REM 2. Get timestamp for folder name
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set "dt=%%I"
 set "TIMESTAMP=%dt:~0,4%%dt:~4,2%%dt:~6,2%_%dt:~8,2%%dt:~10,2%%dt:~12,2%"
 set "BACKUP_DIR=%BACKUP_WORKTREE%\%TIMESTAMP%"
 
-echo [步骤2] 创建备份文件夹: %TIMESTAMP%
+echo [Step 2] Create folder: %TIMESTAMP%
 mkdir "%BACKUP_DIR%"
 
-REM 3. 从源项目复制文件（排除 .git、addons、.godot）
-echo [步骤3] 复制项目文件...
-xcopy "%SOURCE_DIR%" "%BACKUP_DIR%\" /E /I /Q /Y /EXCLUDE:"%~dp0backup_exclude.txt"
+REM 3. Copy files using robocopy via PowerShell
+echo [Step 3] Copy project files...
+powershell -Command "robocopy '%SOURCE_DIR%' '%BACKUP_DIR%' /E /XD .git addons .godot /XF backup_exclude.txt backup.bat run_robocopy.bat run_robocopy.ps1 /NFL /NDL /NJH /NJS /NC /NS /NP"
 
-REM 4. 提交并推送
-echo [步骤4] 提交备份到云端...
+REM 4. Commit and push
+echo [Step 4] Commit and push...
 "%GIT%" add .
-"%GIT%" commit -m "backup: 增量备份 %TIMESTAMP%"
+"%GIT%" commit -m "backup: %TIMESTAMP%"
 "%GIT%" push origin main
 
 if errorlevel 1 (
-    echo [错误] 推送失败
+    echo [ERROR] Push failed
     if not "%NO_PAUSE%"=="1" pause
     exit /b 1
 )
 
 echo.
-echo [完成] 增量备份已成功推送至云端
+echo [DONE] Backup completed successfully
 cd /d "%~dp0"
 if not "%NO_PAUSE%"=="1" pause

@@ -1,4 +1,7 @@
 \.git\
 \addons\
 \.godot\
-\backup_exclude.txt
+backup_exclude.txt
+backup.bat
+run_robocopy.bat
+run_robocopy.ps1
