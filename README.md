@@ -21,17 +21,27 @@
   - 昵称存入 GameState（`player_name`），登录成功后跳转到养成主界面
 
 - **养成主界面**（`scenes/ui/main_ui.tscn`）：
-  - 顶部信息栏：游戏时间（年/月）、金币（含增长率）、人口、幸福度、科技进度、文化进度
+  - 顶部信息栏：游戏时间（年/月）、金币（含增长率）、人口、幸福度、科技点数、文化点数
   - 底部操作栏：六大模块入口按钮（颜色区分）+ 时间控制按钮（暂停/1x/2x/3x加速）
-  - 右下角消息日志面板
+  - 右下角消息日志面板（半透明、鼠标穿透，不拦截建造点击）
   - 中央区域（地图/城市视图占位）
   - 深邃星空背景 + 星星粒子 + 光晕
   - 实时资源增长系统（`scripts/ui/main_ui.gd`，数据层信号驱动 UI 刷新）
   - 消息日志独立组件（`scripts/ui/message_log.gd`），欢迎语显示玩家昵称
   - 全局主题 `assets/fonts/default_theme.tres` 已挂载（`project.godot` → `gui/theme/custom`）
 
+- **地图与探索界面**（`scenes/ui/explore/explore_map.tscn`，默认进入）：
+  - 部落冲突式网格建设：左侧可滚动建筑菜单栏 + 中央 25×14 网格建设区（1000×560px，居中填满）
+  - 5 种建筑（住宅/办公楼/学校/医院/金融中心）+ 3 种装饰（花园/喷泉/雕像），数据配置于 `data/buildings.json`
+  - 悬停半透明预览（绿=可建/红=不可建）、建造进度动画、完工闪光、放置缩放动画
+  - 随机障碍（岩石/树木/湖泊）可花费金币清除；点击施工中建筑可取消建造并返还金币
+  - **建筑升级与拆除**：点击已完工建筑弹出操作面板；升级费用随等级递增（最高 5 级）、加成 = 基础 × 等级；拆除返还总投入 60%；进度条颜色区分（建绿/升黄/拆红）
+  - 建筑加成（金币/人口/幸福度/科技/文化）实时接入月度增长循环，顶部信息栏同步刷新
+  - **科技/文化为点数制**：基础速率 0.5/0.4 点/月，累积不封顶
+
 - **窗口设置**：
-  - 1280×720 视口分辨率（测试窗口规范，防止系统窗口遮挡影响测试截图），`canvas_items` 拉伸模式
+  - 1280×720 视口分辨率（测试窗口规范，防止系统窗口遮挡影响测试截图），`canvas_items` 拉伸 + `keep` 纵横比
+  - 窗口可调整大小并**等比例缩放**（Godot 4.7.1 存在 resize 后 content_scale 不自动更新的问题，由 `WindowManager` Autoload 监听 `size_changed` 手动计算缩放系数解决）
 
 - 字体：思源黑体（Source Han Sans CN，OFL 开源许可，Normal / Bold / Heavy 三字重）+ 思源宋体（Source Han Serif CN，Regular / Variable），位于 `assets/fonts/`
 - 字体规范：
@@ -53,8 +63,9 @@
 | `scenes/game/` | 游戏世界场景 |
 | `scripts/` | GDScript 脚本（外部 `.gd`，不在场景内嵌逻辑） |
 | `scripts/data/` | 数据层：GameState（游戏状态）、TimeManager（时间管理）等 Autoload 单例 |
-| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd、message_log.gd 等） |
-| `scripts/game/` | 游戏逻辑层：战斗、建造、AI 等系统 |
+| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd、message_log.gd、explore_map.gd、building_menu.gd、grid_view.gd 等） |
+| `scripts/game/` | 游戏逻辑层：建造系统（building_system.gd）等 |
+| `scenes/ui/explore/` | 地图与探索界面场景（网格建设） |
 | `assets/` | 美术 / 音频 / 字体资源 |
 | `data/` | 数据文件（JSON 等） |
 | `docs/design/` | 游戏设计文档 |
@@ -66,6 +77,8 @@
 | ---- | ---- | ---- |
 | GameState | `scripts/data/game_state.gd` | 游戏状态管理：玩家数据（昵称）、资源数据、进度数据、信号通知 |
 | TimeManager | `scripts/data/time_manager.gd` | 时间管理：游戏时间、倍率控制、月度更新 |
+| BuildingSystem | `scripts/game/building_system.gd` | 建造系统：网格状态、建筑放置/取消/清障、建造/升级/拆除计时、加成重算 |
+| WindowManager | `scripts/data/window_manager.gd` | 窗口管理：监听窗口尺寸变化，手动计算并设置 content_scale_factor，实现 1280×720 设计分辨率的等比例缩放 |
 
 ## 脚本工具（重要）
 

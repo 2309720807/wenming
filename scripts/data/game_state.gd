@@ -47,11 +47,12 @@ var metal: float = 10.0
 var metal_rate: float = 0.2
 
 # === 进度数据 ===
-var tech_progress: float = 0.0
-var tech_rate: float = 0.02
+# 科技/文化为具体点数（非百分比），随时间累积，用于后续解锁/消耗
+var tech_points: float = 0.0
+var tech_rate: float = 0.5  # 每月科技点数
 
-var culture_progress: float = 0.0
-var culture_rate: float = 0.015
+var culture_points: float = 0.0
+var culture_rate: float = 0.4  # 每月文化点数
 
 
 func set_month(new_year: int, new_month: int) -> void:
@@ -109,13 +110,13 @@ func add_metal(amount: float) -> void:
 
 
 func add_tech(amount: float) -> void:
-	tech_progress = minf(tech_progress + amount, 1.0)
-	tech_changed.emit(tech_progress)
+	tech_points += amount
+	tech_changed.emit(tech_points)
 
 
 func add_culture(amount: float) -> void:
-	culture_progress = minf(culture_progress + amount, 1.0)
-	culture_changed.emit(culture_progress)
+	culture_points += amount
+	culture_changed.emit(culture_points)
 
 
 func get_time_display() -> String:
@@ -135,8 +136,8 @@ func get_happiness_display() -> String:
 
 
 func get_tech_display() -> String:
-	return "科技 %.0f%%" % (tech_progress * 100)
+	return "科技 %d" % int(tech_points)
 
 
 func get_culture_display() -> String:
-	return "文化 %.0f%%" % (culture_progress * 100)
+	return "文化 %d" % int(culture_points)

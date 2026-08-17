@@ -1,0 +1,123 @@
+{
+	"grid_width": 25,
+	"grid_height": 14,
+	"cell_size": 40,
+	"buildings": [
+		{
+			"id": "residence",
+			"name": "住宅",
+			"cost": 60,
+			"width": 2,
+			"height": 2,
+			"build_time": 8.0,
+			"color": "#4e9e6a",
+			"bonus_desc": "人口上限+10，人口增长+0.05/月",
+			"bonuses": { "pop_max": 10, "pop_growth_rate": 0.05 }
+		},
+		{
+			"id": "office",
+			"name": "办公楼",
+			"cost": 80,
+			"width": 2,
+			"height": 2,
+			"build_time": 10.0,
+			"color": "#4a7fc1",
+			"bonus_desc": "金币产出+2/月",
+			"bonuses": { "gold_rate": 2.0 }
+		},
+		{
+			"id": "school",
+			"name": "学校",
+			"cost": 90,
+			"width": 2,
+			"height": 2,
+			"build_time": 12.0,
+			"color": "#8a5fd0",
+			"bonus_desc": "科技+0.2点/月",
+			"bonuses": { "tech_rate": 0.2 }
+		},
+		{
+			"id": "hospital",
+			"name": "医院",
+			"cost": 120,
+			"width": 2,
+			"height": 2,
+			"build_time": 15.0,
+			"color": "#d0565a",
+			"bonus_desc": "幸福度+2，人口增长+0.08/月",
+			"bonuses": { "happiness": 2, "pop_growth_rate": 0.08 }
+		},
+		{
+			"id": "finance",
+			"name": "金融中心",
+			"cost": 200,
+			"width": 3,
+			"height": 3,
+			"build_time": 20.0,
+			"color": "#d9a441",
+			"bonus_desc": "金币产出+5/月",
+			"bonuses": { "gold_rate": 5.0 }
+		}
+	],
+	"decorations": [
+		{
+			"id": "garden",
+			"name": "花园",
+			"cost": 20,
+			"width": 1,
+			"height": 1,
+			"build_time": 3.0,
+			"color": "#6fbf73",
+			"bonus_desc": "幸福度+1",
+			"bonuses": { "happiness": 1 }
+		},
+		{
+			"id": "fountain",
+			"name": "喷泉",
+			"cost": 30,
+			"width": 2,
+			"height": 2,
+			"build_time": 5.0,
+			"color": "#5fb8d9",
+			"bonus_desc": "幸福度+2",
+			"bonuses": { "happiness": 2 }
+		},
+		{
+			"id": "statue",
+			"name": "雕像",
+			"cost": 40,
+			"width": 1,
+			"height": 1,
+			"build_time": 6.0,
+			"color": "#b8a46a",
+			"bonus_desc": "文化+0.1点/月",
+			"bonuses": { "culture_rate": 0.1 }
+		}
+	],
+	"obstacles": [
+		{
+			"id": "rock",
+			"name": "岩石",
+			"clear_cost": 10,
+			"width": 1,
+			"height": 1,
+			"color": "#8b93a3"
+		},
+		{
+			"id": "tree",
+			"name": "树木",
+			"clear_cost": 8,
+			"width": 1,
+			"height": 1,
+			"color": "#3e7d4a"
+		},
+		{
+			"id": "lake",
+			"name": "湖泊",
+			"clear_cost": 30,
+			"width": 2,
+			"height": 2,
+			"color": "#3a6fa8"
+		}
+	]
+}

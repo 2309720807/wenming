@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3]
+[gd_scene load_steps=27 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/main_ui.gd" id="1_main_ui"]
 [ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Bold.ttf" id="2_font_bold"]
@@ -8,6 +8,7 @@
 [ext_resource type="Material" path="res://scenes/ui/login_star_material.tres" id="6_star_mat"]
 [ext_resource type="Script" path="res://scripts/ui/message_log.gd" id="7_msg_log"]
 [ext_resource type="FontFile" path="res://assets/fonts/SourceHanSerifCN-Regular.otf" id="8_font_serif"]
+[ext_resource type="PackedScene" path="res://scenes/ui/explore/explore_map.tscn" id="9_explore"]
 
 [sub_resource type="Gradient" id="Gradient_star"]
 offsets = PackedFloat32Array(0, 0.3, 1)
@@ -32,7 +33,7 @@ border_width_top = 2
 border_color = Color(0.2, 0.4, 0.7, 0.35)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_msg"]
-bg_color = Color(0.03, 0.05, 0.10, 0.8)
+bg_color = Color(0.03, 0.05, 0.10, 0.45)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -243,12 +244,24 @@ grow_vertical = 2
 
 [node name="PlaceholderLabel" type="Label" parent="CenterArea"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.38, 0.55, 0.8, 0.65)
 theme_override_fonts/font = ExtResource("2_font_bold")
 theme_override_font_sizes/font_size = 24
 text = "中央区域：地图/城市视图"
 horizontal_alignment = 1
+
+[node name="ExploreMap" parent="." instance=ExtResource("9_explore")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 58.0
+offset_bottom = -72.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="BottomBar" type="PanelContainer" parent="."]
 unique_name_in_owner = true
@@ -426,10 +439,12 @@ offset_right = -10.0
 offset_bottom = -78.0
 grow_horizontal = 0
 grow_vertical = 0
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBox_msg")
 
 [node name="VBox" type="VBoxContainer" parent="MessagePanel"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 6
 theme_override_constants/margin_left = 14
 theme_override_constants/margin_top = 10
@@ -448,6 +463,7 @@ script = ExtResource("7_msg_log")
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+mouse_filter = 2
 theme_override_colors/default_color = Color(0.65, 0.78, 0.92, 0.85)
 theme_override_fonts/normal_font = ExtResource("8_font_serif")
 theme_override_font_sizes/normal_font_size = 14

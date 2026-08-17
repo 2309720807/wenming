@@ -28,6 +28,7 @@ extends Control
 
 # === 中央区域 ===
 @onready var placeholder_label: Label = %PlaceholderLabel
+@onready var explore_map: Control = %ExploreMap
 
 # === 消息日志（独立组件：scripts/ui/message_log.gd）===
 @onready var message_log: MessageLog = %MessageLog
@@ -40,6 +41,8 @@ func _ready() -> void:
 	if player_display.is_empty():
 		player_display = "引导者"
 	message_log.add_message("欢迎你，%s！你的文明刚刚起步。" % player_display)
+	# 默认进入地图与探索界面（网格建设）
+	_on_module_pressed("explore")
 
 
 func _connect_signals() -> void:
@@ -69,6 +72,9 @@ func _connect_signals() -> void:
 	# TimeManager 信号
 	TimeManager.speed_changed.connect(_on_speed_changed)
 	TimeManager.paused_changed.connect(_on_paused_changed)
+
+	# BuildingSystem 信号（建筑加成变化 → 刷新顶部数值）
+	BuildingSystem.bonus_updated.connect(_on_bonus_updated)
 
 
 func _update_all_labels() -> void:
@@ -122,6 +128,10 @@ func _on_paused_changed(is_paused: bool) -> void:
 		message_log.add_message("游戏继续")
 
 
+func _on_bonus_updated() -> void:
+	_update_all_labels()
+
+
 # === 模块导航 ===
 
 func _on_module_pressed(module_name: String) -> void:
@@ -155,11 +165,16 @@ func _show_module_placeholder(module_name: String) -> void:
 		"economy": "经济与资源",
 		"military": "军事与防御",
 		"culture": "文化与外交",
-		"explore": "地图与探索",
 	}
+	if module_name == "explore":
+		# 地图与探索：显示网格建设界面
+		explore_map.visible = true
+		placeholder_label.visible = false
+		return
 	var name_str: String = names.get(module_name, module_name)
 	placeholder_label.text = "[ %s ]\n\n模块建设中，敬请期待..." % name_str
 	placeholder_label.visible = true
+	explore_map.visible = false
 
 
 # === 时间控制 ===
