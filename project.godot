@@ -8,6 +8,8 @@
 
 config_version=5
 
+"ï»¿config_version"=5
+
 [application]
 
 config/name="wenming"
@@ -21,12 +23,12 @@ GameState="*res://scripts/data/game_state.gd"
 TimeManager="*res://scripts/data/time_manager.gd"
 BuildingSystem="*res://scripts/game/building_system.gd"
 WindowManager="*res://scripts/data/window_manager.gd"
+GiftCodeManager="*res://scripts/data/gift_code_manager.gd"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
-window/stretch/mode="canvas_items"
 
 [editor_plugins]
 

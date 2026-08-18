@@ -39,9 +39,16 @@
   - 建筑加成（金币/人口/幸福度/科技/文化）实时接入月度增长循环，顶部信息栏同步刷新
   - **科技/文化为点数制**：基础速率 0.5/0.4 点/月，累积不封顶
 
+- **设置系统**（`scenes/ui/settings_menu.tscn` + `scripts/ui/settings_menu.gd`）：
+  - 底栏右下角"设置"按钮，打开居中设置面板
+  - **游戏分辨率**：下拉选择 1280×720 / 1600×900 / 1920×1080 / 2560×1440，选择即应用（`WindowManager`）
+  - **礼包码**：输入兑换金币奖励，数据配置于 `data/gift_codes.json`，防重复兑换（`GiftCodeManager` Autoload）
+  - **退出游戏**：确认对话框后退出
+
 - **窗口设置**：
-  - 1280×720 视口分辨率（测试窗口规范，防止系统窗口遮挡影响测试截图），`canvas_items` 拉伸 + `keep` 纵横比
-  - 窗口可调整大小并**等比例缩放**（Godot 4.7.1 存在 resize 后 content_scale 不自动更新的问题，由 `WindowManager` Autoload 监听 `size_changed` 手动计算缩放系数解决）
+  - 1280×720 设计分辨率（测试窗口规范，防止系统窗口遮挡影响测试截图），关闭引擎 stretch
+  - 根 Control 固定 1280×720 布局，由 `WindowManager` 按 `min(宽/1280, 高/720)` 等比缩放（矢量重绘）：切换 1920×1080 等分辨率时画面清晰、UI 不错位
+  - 分辨率切换由 `WindowManager` Autoload 提供接口（`set_resolution`、窗口居中、`setup_scale_root` 注册场景根）
 
 - 字体：思源黑体（Source Han Sans CN，OFL 开源许可，Normal / Bold / Heavy 三字重）+ 思源宋体（Source Han Serif CN，Regular / Variable），位于 `assets/fonts/`
 - 字体规范：
@@ -63,7 +70,7 @@
 | `scenes/game/` | 游戏世界场景 |
 | `scripts/` | GDScript 脚本（外部 `.gd`，不在场景内嵌逻辑） |
 | `scripts/data/` | 数据层：GameState（游戏状态）、TimeManager（时间管理）等 Autoload 单例 |
-| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd、message_log.gd、explore_map.gd、building_menu.gd、grid_view.gd 等） |
+| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd、message_log.gd、explore_map.gd、building_menu.gd、grid_view.gd、settings_menu.gd 等） |
 | `scripts/game/` | 游戏逻辑层：建造系统（building_system.gd）等 |
 | `scenes/ui/explore/` | 地图与探索界面场景（网格建设） |
 | `assets/` | 美术 / 音频 / 字体资源 |
@@ -78,7 +85,8 @@
 | GameState | `scripts/data/game_state.gd` | 游戏状态管理：玩家数据（昵称）、资源数据、进度数据、信号通知 |
 | TimeManager | `scripts/data/time_manager.gd` | 时间管理：游戏时间、倍率控制、月度更新 |
 | BuildingSystem | `scripts/game/building_system.gd` | 建造系统：网格状态、建筑放置/取消/清障、建造/升级/拆除计时、加成重算 |
-| WindowManager | `scripts/data/window_manager.gd` | 窗口管理：监听窗口尺寸变化，手动计算并设置 content_scale_factor，实现 1280×720 设计分辨率的等比例缩放 |
+| WindowManager | `scripts/data/window_manager.gd` | 窗口管理：根 Control 等比缩放（矢量重绘，任意分辨率清晰不错位）、分辨率切换（`set_resolution`）、窗口居中、`setup_scale_root` 注册场景根 |
+| GiftCodeManager | `scripts/data/gift_code_manager.gd` | 礼包码管理：加载 `data/gift_codes.json`、校验兑换、发放金币奖励、防重复兑换 |
 
 ## 脚本工具（重要）
 

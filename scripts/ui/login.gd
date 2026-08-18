@@ -11,6 +11,7 @@ var player_name: String = ""
 
 
 func _ready() -> void:
+	WindowManager.setup_scale_root(self)
 	start_button.pressed.connect(_on_start_pressed)
 	name_input.text_submitted.connect(_on_start_pressed)
 	error_label.visible = false

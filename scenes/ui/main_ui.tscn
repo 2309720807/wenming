@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://scripts/ui/message_log.gd" id="7_msg_log"]
 [ext_resource type="FontFile" path="res://assets/fonts/SourceHanSerifCN-Regular.otf" id="8_font_serif"]
 [ext_resource type="PackedScene" path="res://scenes/ui/explore/explore_map.tscn" id="9_explore"]
+[ext_resource type="PackedScene" path="res://scenes/ui/settings_menu.tscn" id="10_settings"]
 
 [sub_resource type="Gradient" id="Gradient_star"]
 offsets = PackedFloat32Array(0, 0.3, 1)
@@ -425,6 +426,25 @@ theme_override_styles/normal = SubResource("StyleBox_btn_normal")
 theme_override_styles/hover = SubResource("StyleBox_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
 text = "3x"
+
+[node name="Sep2" type="VSeparator" parent="BottomBar/HBox"]
+layout_mode = 2
+
+[node name="BtnSettings" type="Button" parent="BottomBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.82, 0.95, 1)
+theme_override_colors/font_hover_color = Color(0.9, 0.94, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.6, 0.7, 0.85, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBox_btn_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_pressed")
+text = "设置"
+
+[node name="SettingsMenu" parent="." instance=ExtResource("10_settings")]
 
 [node name="MessagePanel" type="PanelContainer" parent="."]
 layout_mode = 1

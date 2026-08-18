@@ -26,6 +26,10 @@ extends Control
 @onready var btn_speed2: Button = %BtnSpeed2
 @onready var btn_speed3: Button = %BtnSpeed3
 
+# === 设置 ===
+@onready var btn_settings: Button = %BtnSettings
+@onready var settings_menu: SettingsMenu = %SettingsMenu
+
 # === 中央区域 ===
 @onready var placeholder_label: Label = %PlaceholderLabel
 @onready var explore_map: Control = %ExploreMap
@@ -35,6 +39,7 @@ extends Control
 
 
 func _ready() -> void:
+	WindowManager.setup_scale_root(self)
 	_connect_signals()
 	_update_all_labels()
 	var player_display: String = GameState.player_name
@@ -59,6 +64,10 @@ func _connect_signals() -> void:
 	btn_speed1.pressed.connect(_on_speed_pressed.bind(1.0))
 	btn_speed2.pressed.connect(_on_speed_pressed.bind(2.0))
 	btn_speed3.pressed.connect(_on_speed_pressed.bind(3.0))
+
+	# 设置面板
+	btn_settings.pressed.connect(_on_settings_pressed)
+	settings_menu.redeem_succeeded.connect(message_log.add_message)
 
 	# GameState 信号（Autoload 单例，全局可访问）
 	GameState.year_changed.connect(_on_year_changed)
@@ -185,6 +194,12 @@ func _on_pause_pressed() -> void:
 
 func _on_speed_pressed(speed: float) -> void:
 	TimeManager.set_speed(speed)
+
+
+# === 设置 ===
+
+func _on_settings_pressed() -> void:
+	settings_menu.open()
 
 
 func _update_speed_buttons(active_speed: int) -> void:

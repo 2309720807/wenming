@@ -118,6 +118,20 @@
 - 建筑加成动态重算 `gold_rate`/`pop_max`/`pop_growth_rate`/`happiness`/`tech_rate`/`culture_rate`，接入 TimeManager 月度增长循环
 - **科技/文化为点数制（非百分比）**：基础速率 0.5/0.4 点/月，随时间累积不封顶，供后续科技解锁/文化扩张消耗
 
+### 3.8 设置系统（已实现）
+
+主界面底栏右下角"设置"按钮（速度控制右侧），打开居中设置面板，包含三项功能：
+
+- **游戏分辨率**：下拉选择 1280×720 / 1600×900 / 1920×1080 / 2560×1440，选择即应用（窗口切换至对应分辨率，UI 按新分辨率矢量重绘，清晰且不错位；窗口自动居中）
+- **礼包码**：输入礼包码并兑换，发放金币奖励；大小写不敏感，同一码本次运行内不可重复兑换；礼包码配置于 `data/gift_codes.json`（数据驱动）
+- **退出游戏**：点击后弹出确认对话框（内置 ConfirmationDialog），确认后退出游戏
+
+**模块划分**：
+- `data/gift_codes.json` — 礼包码数据配置（数据驱动）
+- `scripts/data/gift_code_manager.gd` — 礼包码管理器 Autoload：加载配置、校验、发奖（GameState.add_gold）、防重复兑换
+- `scripts/ui/settings_menu.gd` — 设置面板 UI：分辨率下拉、礼包码输入、退出确认，仅调用 WindowManager/GiftCodeManager，不含业务逻辑
+- `scenes/ui/settings_menu.tscn` — 设置面板场景（居中弹窗，实例化于主界面）
+
 ## 4. 界面UI布局
 
 ### A. 顶部信息栏（全局概览）
@@ -197,12 +211,22 @@ res://
 - `scripts/game/building_system.gd` — 建造系统 Autoload：网格状态、放置/清除/建造计时、加成重算，通过信号通知 UI
 - `scripts/ui/explore_map.gd` — 地图网格 UI：绘制网格、预览、点击处理、建造进度动画
 - `scripts/ui/building_menu.gd` — 左侧建筑菜单栏：分类、滚动、选中状态
-- `scripts/data/window_manager.gd` — 窗口管理 Autoload：窗口等比例缩放（Godot 4.7.1 的 content_scale 不自动更新问题，手动监听 size_changed 计算系数）
+- `scripts/data/window_manager.gd` — 窗口管理 Autoload：根 Control 等比缩放（scale=min(宽/1280,高/720)，矢量重绘）、分辨率切换、窗口居中
 - `scenes/ui/explore/` — 地图与探索界面场景
 
+**设置系统模块划分**：
+
+- `data/gift_codes.json` — 礼包码数据配置
+- `scripts/data/gift_code_manager.gd` — 礼包码管理器 Autoload
+- `scripts/ui/settings_menu.gd` — 设置面板 UI 脚本
+- `scenes/ui/settings_menu.tscn` — 设置面板场景（实例化于主界面）
+
 **窗口缩放说明**：
-- 设计分辨率 1280×720，`stretch/mode=canvas_items` + `aspect=keep` + `resizable=true`
-- Godot 4.7.1 在窗口调整大小后不会自动更新 `content_scale_factor`（引擎缺陷），由 WindowManager Autoload 监听 `size_changed`，按 `min(宽/1280, 高/720)` 手动设置缩放系数，实现内容等比例缩放
+- 设计分辨率 1280×720；**关闭引擎 stretch**，场景根 Control 固定 1280×720 布局，由 WindowManager 按窗口尺寸计算等比系数 `scale = min(宽/1280, 高/720)` 施加到根 Control（登录/主界面 `_ready` 调用 `setup_scale_root(self)` 注册）
+- **等比缩放原理**：Control transform 缩放为矢量重绘，切换 1920×1080 等分辨率时字体/图形按新分辨率重新渲染，画面清晰（viewport 拉伸模式放大模糊，已弃用）；布局坐标系恒定 1280×720，任意窗口尺寸不错位
+- **历史问题**：曾用 `canvas_items` + 手动 `content_scale_factor` 缩放，但 Godot 4.7.1 存在双重缩放缺陷（factor 设置后逻辑视口被压缩、布局坐标系缩小再放大导致 UI 错位），且引擎 resize 后不自动更新 factor，已弃用
+- **输入处理**：引擎 GUI 命中经 Control transform 逆变换自动换算，缩放后按钮/网格点击坐标无需手动转换
+- **子窗口（ConfirmationDialog 等）**：不受场景根缩放影响，弹出时按 `WindowManager.current_scale_factor()` 设置 `content_scale_factor` 保持视觉一致
 - 信息窗（InfoPanel）与消息日志（MessagePanel）均设 `mouse_filter=IGNORE`（鼠标穿透），不阻挡网格建造操作；操作面板（ActionPanel）保留交互
 
 ## 7. 数据驱动约定
@@ -220,7 +244,9 @@ res://
 - [x] 六大模块子界面框架
 - [x] 时间驱动系统（资源随时间自动增长/消耗；月度增长走 GameState add_* API 触发信号刷新 UI，人口增长小数累积、满 1 转化）
 - [x] 数据层搭建（JSON 配置 + 状态管理）
-- [x] **地图与探索：网格建设系统**（部落冲突式网格建造、左侧建筑菜单栏、建筑/装饰/障碍物、建造时间动画、加成接入月度增长、**建筑升级与拆除**、**科技/文化点数化**、窗口等比例缩放）
+- [x] **地图与探索：网格建设系统**（部落冲突式网格建造、左侧建筑菜单栏、建筑/装饰/障碍物、建造时间动画、加成接入月度增长、**建筑升级与拆除**、**科技/文化点数化**）
+- [x] **窗口等比例缩放**（关闭 stretch，根 Control 矢量等比缩放：任意分辨率清晰、布局坐标系恒定不错位）
+- [x] **设置系统**（底栏设置按钮：分辨率切换、礼包码兑换、退出游戏）
 - [ ] 核心循环打通
 - [ ] 内容扩展：六大模块完整化
 - [ ] 正式化：音效、打磨、存档
