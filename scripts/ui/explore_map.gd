@@ -3,6 +3,10 @@ class_name ExploreMap
 
 ## 地图与探索界面：左侧建筑菜单 + 中央网格建设区
 ## 设计依据：docs/design/game_design.md 3.7
+## 模块：building_action_panel.gd（操作面板）、building_info.gd（悬停文案）、map_summary.gd（汇总）
+
+# 建筑产出总览面板定位（网格下方空白区，设计坐标系 1280×720）
+const SUMMARY_RECT: Rect2 = Rect2(260, 596, 1010, 84)
 
 @onready var menu: BuildingMenu = %MenuList
 @onready var grid_view: GridView = %GridView
@@ -11,21 +15,24 @@ class_name ExploreMap
 @onready var info_desc: Label = %InfoDesc
 @onready var info_hint: Label = %InfoHint
 @onready var action_panel: PanelContainer = %ActionPanel
-@onready var action_title: Label = %ActionTitle
-@onready var action_desc: Label = %ActionDesc
 @onready var action_upgrade_btn: Button = %ActionUpgradeBtn
 @onready var action_demolish_btn: Button = %ActionDemolishBtn
-@onready var action_close_btn: Button = %ActionCloseBtn
 
 var selected_item: Dictionary = {}
-var action_key: String = ""  # 操作面板当前建筑的 placed key
+var _action_ctrl: BuildingActionPanel
+var _feedback: BuildingFeedback
 
 
 func _ready() -> void:
+	_action_ctrl = BuildingActionPanel.new()
+	_action_ctrl.setup(action_panel, %ActionTitle, %ActionDesc,
+			action_upgrade_btn, action_demolish_btn, %ActionCloseBtn)
+	_feedback = BuildingFeedback.new()
+	_feedback.setup(grid_view, info_hint)
 	_connect_signals()
 	info_panel.hide()
 	action_panel.hide()
-	info_hint.text = "选择左侧建筑后，点击网格放置；点击障碍可花费金币清除"
+	info_hint.text = BuildingInfo.HINT_BASE
 	_add_summary_panel()
 
 
@@ -33,14 +40,8 @@ func _add_summary_panel() -> void:
 	# 建筑产出总览：悬于网格下方空白区，鼠标穿透不阻挡建造点击
 	var summary := MapSummary.new()
 	summary.name = "SummaryPanel"
-	summary.anchor_left = 0.0
-	summary.anchor_top = 0.0
-	summary.anchor_right = 0.0
-	summary.anchor_bottom = 0.0
-	summary.offset_left = 260.0
-	summary.offset_top = 596.0
-	summary.offset_right = 1270.0
-	summary.offset_bottom = 680.0
+	summary.position = SUMMARY_RECT.position
+	summary.size = SUMMARY_RECT.size
 	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(summary)
 
@@ -50,14 +51,13 @@ func _connect_signals() -> void:
 	grid_view.hover_changed.connect(_on_hover_changed)
 	grid_view.cell_clicked.connect(_on_cell_clicked)
 	BuildingSystem.grid_changed.connect(func(_cell: Vector2i) -> void: grid_view.queue_redraw())
-	BuildingSystem.building_placed.connect(_on_building_placed)
-	BuildingSystem.building_completed.connect(_on_building_completed)
-	BuildingSystem.obstacle_cleared.connect(_on_obstacle_cleared)
-	BuildingSystem.building_upgraded.connect(_on_building_upgraded)
-	BuildingSystem.building_demolished.connect(_on_building_demolished)
+	BuildingSystem.building_completed.connect(_feedback.on_completed)
+	BuildingSystem.building_upgraded.connect(_feedback.on_upgraded)
+	BuildingSystem.building_demolished.connect(_feedback.on_demolished)
+	BuildingSystem.obstacle_cleared.connect(_feedback.on_obstacle_cleared)
 	action_upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	action_demolish_btn.pressed.connect(_on_demolish_pressed)
-	action_close_btn.pressed.connect(_close_action_panel)
+	%ActionCloseBtn.pressed.connect(_close_action_panel)
 
 
 # === 菜单选择 ===
@@ -80,27 +80,19 @@ func _on_item_selected(item: Dictionary) -> void:
 
 func _on_hover_changed(cell: Vector2i) -> void:
 	if cell.x < 0:
+		info_panel.hide()  # 移出网格时清除残留信息
 		return
 	if BuildingSystem.is_obstacle(cell):
 		var obs: Dictionary = BuildingSystem.get_obstacle_at(cell)
-		_show_info(obs["name"], "清除需 %d 金币\n点击障碍即可清除" % int(obs["clear_cost"]))
+		_show_info(obs["name"], BuildingInfo.obstacle_desc(obs))
 	elif selected_item.is_empty():
 		var placed: Dictionary = BuildingSystem.get_placed_at(cell)
 		if not placed.is_empty():
 			var item: Dictionary = BuildingSystem.get_item(placed["item_id"])
-			match placed["op"]:
-				"build":
-					_show_info(item["name"], "建造中（%.0f%%）…点击可取消建造" % \
-							((1.0 - float(placed["remaining"]) / float(placed["total"])) * 100.0))
-				"upgrade":
-					_show_info(item["name"], "升级中（%.0f%%）…" % \
-							((1.0 - float(placed["remaining"]) / float(placed["total"])) * 100.0))
-				"demolish":
-					_show_info(item["name"], "拆除中（%.0f%%）…" % \
-							((1.0 - float(placed["remaining"]) / float(placed["total"])) * 100.0))
-				_:
-					_show_info(item["name"],
-							"%s\nLv.%d · 点击可升级或拆除" % [item["bonus_desc"], int(placed["level"])])
+			if placed["op"] == "":
+				_show_info(item["name"], BuildingInfo.completed_desc(item, placed))
+			else:
+				_show_info(item["name"], BuildingInfo.construction_desc(item, placed))
 		else:
 			info_panel.hide()
 	elif _grid_view_can_build(cell):
@@ -149,42 +141,21 @@ func _on_cell_clicked(cell: Vector2i) -> void:
 		info_hint.text = "无法建造：金币不足或位置被占用"
 
 
-# === 操作面板（升级/拆除）===
+# === 操作面板（委托 BuildingActionPanel）===
 
 func _open_action_panel(key: String) -> void:
-	# 点击已完工建筑弹出操作面板：显示等级、加成、升级费用与拆除返还
-	var p: Dictionary = BuildingSystem.placed[key]
-	var item: Dictionary = BuildingSystem.get_item(p["item_id"])
-	action_key = key
-	var level: int = int(p["level"])
-	action_title.text = "%s  Lv.%d" % [item["name"], level]
-	action_desc.text = "%s\n\n升级费用：%d 金币\n拆除返还：%d 金币" % [
-		item["bonus_desc"],
-		int(BuildingSystem.get_upgrade_cost(p)),
-		int(BuildingSystem.get_demolish_refund(p)),
-	]
-	if level >= BuildingSystem.MAX_LEVEL:
-		action_upgrade_btn.text = "已达最高等级"
-		action_upgrade_btn.disabled = true
-	else:
-		action_upgrade_btn.text = "升级至 Lv.%d（%d 金币）" % [
-			level + 1, int(BuildingSystem.get_upgrade_cost(p)),
-		]
-		action_upgrade_btn.disabled = GameState.gold < BuildingSystem.get_upgrade_cost(p)
-	action_demolish_btn.text = "拆除（返还 %d 金币）" % int(BuildingSystem.get_demolish_refund(p))
-	action_panel.show()
+	_action_ctrl.open(key)
 
 
 func _close_action_panel() -> void:
-	action_panel.hide()
-	action_key = ""
+	_action_ctrl.close()
 
 
 func _on_upgrade_pressed() -> void:
-	if action_key.is_empty():
+	var key: String = _action_ctrl.current_key()
+	if key.is_empty():
 		return
-	var cell: Vector2i = _key_to_cell(action_key)
-	if BuildingSystem.upgrade_building(cell):
+	if BuildingSystem.upgrade_building(BuildingGrid.key_to_cell(key)):
 		info_hint.text = "开始升级，完成后加成提升！"
 		_close_action_panel()
 		grid_view.queue_redraw()
@@ -193,42 +164,15 @@ func _on_upgrade_pressed() -> void:
 
 
 func _on_demolish_pressed() -> void:
-	if action_key.is_empty():
+	var key: String = _action_ctrl.current_key()
+	if key.is_empty():
 		return
-	var cell: Vector2i = _key_to_cell(action_key)
-	if BuildingSystem.start_demolish(cell):
+	if BuildingSystem.start_demolish(BuildingGrid.key_to_cell(key)):
 		info_hint.text = "开始拆除…完成后返还金币"
 		_close_action_panel()
 		grid_view.queue_redraw()
 	else:
 		info_hint.text = "无法拆除：建筑正在施工中"
-
-
-# === 建造反馈 ===
-
-func _on_building_placed(_cell: Vector2i, _item_id: String) -> void:
-	pass
-
-
-func _on_building_completed(cell: Vector2i, _item_id: String) -> void:
-	grid_view.completion_effects["%d,%d" % [cell.x, cell.y]] = 0.0
-	grid_view.queue_redraw()
-	info_hint.text = "建造完成！"
-
-
-func _on_building_upgraded(cell: Vector2i, _item_id: String, level: int) -> void:
-	grid_view.completion_effects["%d,%d" % [cell.x, cell.y]] = 0.0
-	grid_view.queue_redraw()
-	info_hint.text = "升级完成！当前 Lv.%d" % level
-
-
-func _on_building_demolished(_cell: Vector2i, _item_id: String) -> void:
-	grid_view.queue_redraw()
-	info_hint.text = "拆除完成"
-
-
-func _on_obstacle_cleared(_cell: Vector2i) -> void:
-	grid_view.queue_redraw()
 
 
 # === 工具 ===
@@ -243,8 +187,3 @@ func _show_info(title: String, desc: String) -> void:
 	info_title.text = title
 	info_desc.text = desc
 	info_panel.show()
-
-
-func _key_to_cell(key: String) -> Vector2i:
-	var parts: PackedStringArray = key.split(",")
-	return Vector2i(int(parts[0]), int(parts[1]))

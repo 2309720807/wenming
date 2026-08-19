@@ -3,13 +3,13 @@ class_name GridView
 
 ## 网格地图视图：绘制网格/障碍/建筑/预览，处理悬停与点击
 ## 设计依据：docs/design/game_design.md 3.7
+## 网格尺寸以 BuildingSystem.cell_size 为准（数据驱动，data/buildings.json）
 
 signal hover_changed(cell: Vector2i)
 signal cell_clicked(cell: Vector2i)
 
 const FONT_BOLD: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
 const FONT_NORMAL: Font = preload("res://assets/fonts/SourceHanSansCN-Normal.ttf")
-const CELL: int = 40
 const ANIM_PLACE: float = 0.3
 const ANIM_COMPLETE: float = 0.6
 
@@ -58,7 +58,7 @@ func _gui_input(event: InputEvent) -> void:
 
 func _draw() -> void:
 	var origin: Vector2 = _grid_origin()
-	var grid_px: Vector2 = Vector2(BuildingSystem.GRID_W, BuildingSystem.GRID_H) * CELL
+	var grid_px: Vector2 = Vector2(BuildingSystem.GRID_W, BuildingSystem.GRID_H) * _cell()
 	draw_rect(Rect2(origin, grid_px), Color(0.03, 0.07, 0.14, 0.85))
 	for x: int in range(BuildingSystem.GRID_W):
 		for y: int in range(BuildingSystem.GRID_H):
@@ -69,7 +69,7 @@ func _draw() -> void:
 
 
 func _draw_cell(origin: Vector2, cell: Vector2i) -> void:
-	var rect := Rect2(origin + Vector2(cell * CELL), Vector2(CELL, CELL))
+	var rect := Rect2(origin + Vector2(cell * _cell()), Vector2(_cell(), _cell()))
 	draw_rect(rect, Color(0.05, 0.1, 0.2, 0.5), false, 1.0)
 
 
@@ -81,8 +81,8 @@ func _draw_obstacles(origin: Vector2) -> void:
 			if not mark.begins_with("obs:"):
 				continue
 			var obs: Dictionary = BuildingSystem.obstacles_data.get(mark.substr(4), {})
-			var rect := Rect2(origin + Vector2(x, y) * CELL,
-					Vector2(int(obs.get("width", 1)) * CELL, int(obs.get("height", 1)) * CELL))
+			var rect := Rect2(origin + Vector2(x, y) * _cell(),
+					Vector2(int(obs.get("width", 1)) * _cell(), int(obs.get("height", 1)) * _cell()))
 			var color: Color = Color(obs.get("color", "#888888"))
 			var inner := rect.grow(-4)
 			if obs.get("id", "") == "lake":
@@ -98,9 +98,9 @@ func _draw_buildings(origin: Vector2) -> void:
 		var p: Dictionary = BuildingSystem.placed[key]
 		var item: Dictionary = BuildingSystem.get_item(p["item_id"])
 		var anchor: Vector2i = _key_to_cell(key)
-		var w: int = int(item["width"])
-		var h: int = int(item["height"])
-		var rect := Rect2(origin + Vector2(anchor * CELL), Vector2(w * CELL, h * CELL))
+		var w: int = int(item.get("width", 1))
+		var h: int = int(item.get("height", 1))
+		var rect := Rect2(origin + Vector2(anchor * _cell()), Vector2(w * _cell(), h * _cell()))
 
 		var scale_factor: float = 1.0
 		if place_animations.has(key):
@@ -135,7 +135,7 @@ func _draw_buildings(origin: Vector2) -> void:
 				draw_rect(scaled.grow(6 * (1.0 - t)), Color(1, 0.9, 0.4, (1.0 - t) * 0.8), false, 3.0)
 
 		# 建筑名
-		draw_string(FONT_BOLD, scaled.position + Vector2(8, 20), item["name"],
+		draw_string(FONT_BOLD, scaled.position + Vector2(8, 20), item.get("name", "?"),
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.95))
 		# 占地信息
 		draw_string(FONT_NORMAL, scaled.position + Vector2(8, 34),
@@ -154,7 +154,7 @@ func _draw_preview(origin: Vector2) -> void:
 		return
 	var w: int = int(preview_item.get("width", 1))
 	var h: int = int(preview_item.get("height", 1))
-	var rect := Rect2(origin + Vector2(hover_cell * CELL), Vector2(w * CELL, h * CELL))
+	var rect := Rect2(origin + Vector2(hover_cell * _cell()), Vector2(w * _cell(), h * _cell()))
 	var can_build: bool = can_build_at(hover_cell, w, h)
 	var color: Color = Color(0.3, 0.95, 0.5, 0.4) if can_build else Color(0.95, 0.3, 0.3, 0.4)
 	draw_rect(rect, color)
@@ -163,9 +163,12 @@ func _draw_preview(origin: Vector2) -> void:
 
 # === 工具 ===
 
+func _cell() -> int: return BuildingSystem.cell_size
+
+
 func _grid_origin() -> Vector2:
 	# 网格居中填满中央区域（两侧留少量边距，底部给信息窗留空间）
-	var grid_px: Vector2 = Vector2(BuildingSystem.GRID_W, BuildingSystem.GRID_H) * CELL
+	var grid_px: Vector2 = Vector2(BuildingSystem.GRID_W, BuildingSystem.GRID_H) * _cell()
 	return Vector2((size.x - grid_px.x) / 2.0, 30.0)
 
 
@@ -174,8 +177,8 @@ func _pos_to_cell(pos: Vector2) -> Vector2i:
 	var rel: Vector2 = pos - origin
 	if rel.x < 0 or rel.y < 0:
 		return Vector2i(-1, -1)
-	var x: int = int(rel.x / CELL)
-	var y: int = int(rel.y / CELL)
+	var x: int = int(rel.x / _cell())
+	var y: int = int(rel.y / _cell())
 	if x >= BuildingSystem.GRID_W or y >= BuildingSystem.GRID_H:
 		return Vector2i(-1, -1)
 	return Vector2i(x, y)
