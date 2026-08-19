@@ -86,9 +86,9 @@
 
 中央区域为网格化建设地图（参考《部落冲突》建设方式），左侧菜单栏上下滑动选择建筑，选中后消费金币在网格上自由放置。
 
-- **网格规格**：40px/格，25×14 格（1000×560px），居中布置填满中央区域；消息日志（右下角半透明、鼠标穿透）叠加在网格上但不拦截建造点击
+- **网格规格**：`data/buildings.json` 配置网格尺寸（grid_width/grid_height/cell_size，默认 40px/格，25×14 格 = 1000×560px），居中布置填满中央区域；消息日志（右下角半透明、鼠标穿透）叠加在网格上但不拦截建造点击
 - **放置交互**：鼠标悬停显示半透明预览（绿=可建 / 红=不可建），点击确认放置；建筑不可重叠，需在可建区域内
-- **建造时间**：放置后进入"建造中"状态（绿色进度条），完成后加成正式生效
+- **建造时间**：放置后进入"建造中"状态（绿色进度条），完成后加成正式生效；施工进度随游戏倍速加速（暂停时冻结，与资源增长节奏一致）
 - **取消建造**：点击施工中的建筑即可取消，立即释放格子并**全额返还金币**；菜单栏再次点击已选中的建筑卡片可取消选择
 - **成本**：纯一次性金币投入，无维护费
 - **障碍清障**：点击障碍任意格（含 2×2 湖泊的延伸格）自动定位锚点并清除，仅扣一次费用
@@ -206,12 +206,21 @@ res://
 └── docs/design/       设计文档
 ```
 
-**建造系统模块划分**（遵循模块化规则）：
+**建造系统模块划分**（遵循模块化规则，每文件 ≤200 行）：
 
-- `data/buildings.json` — 建筑/装饰/障碍物数据配置（数据驱动）
-- `scripts/game/building_system.gd` — 建造系统 Autoload：网格状态、放置/清除/建造计时、加成重算，通过信号通知 UI
-- `scripts/ui/explore_map.gd` — 地图网格 UI：绘制网格、预览、点击处理、建造进度动画
+- `data/buildings.json` — 建筑/装饰/障碍物/网格尺寸数据配置（数据驱动，网格尺寸以 JSON 为准）
+- `scripts/game/building_system.gd` — 建造系统 Autoload（薄壳）：信号、状态、施工计时（随倍速）、加成写回，操作委托各模块
+- `scripts/game/building_data.gd` — 建造数据加载与查询（BuildingData）
+- `scripts/game/building_grid.gd` — 网格工具：初始化、随机障碍、占用/释放、锚点定位（BuildingGrid）
+- `scripts/game/building_balance.gd` — 数值平衡：升级/拆除费用、加成汇总（BuildingBalance）
+- `scripts/game/building_actions.gd` — 建筑操作：放置/取消/升级/拆除/清障（BuildingActions）
+- `scripts/ui/explore_map.gd` — 地图网格 UI：菜单选择、悬停、点击处理
+- `scripts/ui/grid_view.gd` — 网格绘制：网格/障碍/建筑/预览渲染与输入（GridView）
 - `scripts/ui/building_menu.gd` — 左侧建筑菜单栏：分类、滚动、选中状态
+- `scripts/ui/building_action_panel.gd` — 操作面板控制器：等级/升级费用/拆除返还显示（BuildingActionPanel）
+- `scripts/ui/building_info.gd` — 悬停/点击信息文案生成（BuildingInfo）
+- `scripts/ui/building_feedback.gd` — 建造反馈：完工/升级/拆除动画与提示（BuildingFeedback）
+- `scripts/ui/map_summary.gd` — 建筑产出总览面板（MapSummary）
 - `scripts/data/window_manager.gd` — 窗口管理 Autoload：根 Control 等比缩放（scale=min(宽/1280,高/720)，矢量重绘）、分辨率切换、窗口居中
 - `scenes/ui/explore/` — 地图与探索界面场景
 
