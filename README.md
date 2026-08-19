@@ -19,6 +19,13 @@
   - 半透明圆角面板、青色发光标题、按钮悬停/按下态
   - 登录逻辑：昵称输入校验 + 错误提示淡入（`scripts/ui/login.gd`）
   - 昵称存入 GameState（`player_name`），登录成功后跳转到养成主界面
+  - **本地存档列表**：登录面板下方显示已保存的角色存档（角色名/年月/金币摘要），每行"进入"（加载存档直接进游戏）与"删除"（确认后删除）按钮
+
+- **存档系统**（开发者调试用，`scripts/data/save_manager.gd` Autoload）：
+  - 本地目录 `user://saves/`，JSON 格式，按角色名保存（同名覆盖更新）
+  - 保存入口：调试台（礼包码 `tiaoshitai`）"存档管理"分组输入角色名保存当前进度
+  - 存档内容：GameState 全部数值 + 建造状态（网格/建筑/加成基准），加载后完整恢复并刷新 UI
+  - 登录首页显示已有存档，支持加载进入与删除
 
 - **养成主界面**（`scenes/ui/main_ui.tscn`）：
   - 顶部信息栏：游戏时间（年/月）、金币（含增长率）、人口、幸福度、科技点数、文化点数
@@ -90,8 +97,9 @@
 
 | 单例名 | 路径 | 说明 |
 | ---- | ---- | ---- |
-| GameState | `scripts/data/game_state.gd` | 游戏状态管理：玩家数据（昵称）、资源数据、进度数据、信号通知 |
+| GameState | `scripts/data/game_state.gd` | 游戏状态管理：玩家数据（昵称）、资源数据、进度数据、信号通知、存档恢复 |
 | TimeManager | `scripts/data/time_manager.gd` | 时间管理：游戏时间、倍率控制、月度更新 |
+| SaveManager | `scripts/data/save_manager.gd` | 存档管理：user://saves/ 本地 JSON 存档（保存/加载/列表/删除），按角色名区分 |
 | BuildingSystem | `scripts/game/building_system.gd` | 建造系统 Autoload（薄壳）：网格状态、放置/取消/清障、建造/升级/拆除计时（随倍速）、加成重算；逻辑拆分于 building_data/building_grid/building_balance/building_actions |
 | WindowManager | `scripts/data/window_manager.gd` | 窗口管理：根 Control 等比缩放（矢量重绘，任意分辨率清晰不错位）、分辨率切换（`set_resolution`）、窗口居中、`setup_scale_root` 注册场景根 |
 | GiftCodeManager | `scripts/data/gift_code_manager.gd` | 礼包码管理：加载 `data/gift_codes.json`、校验兑换、发放金币奖励、防重复兑换 |
