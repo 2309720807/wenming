@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/main_ui.gd" id="1_main_ui"]
 [ext_resource type="FontFile" path="res://assets/fonts/SourceHanSansCN-Bold.ttf" id="2_font_bold"]
@@ -10,6 +10,7 @@
 [ext_resource type="FontFile" path="res://assets/fonts/SourceHanSerifCN-Regular.otf" id="8_font_serif"]
 [ext_resource type="PackedScene" path="res://scenes/ui/explore/explore_map.tscn" id="9_explore"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_menu.tscn" id="10_settings"]
+[ext_resource type="Script" path="res://scripts/ui/top_bar.gd" id="11_top_bar"]
 
 [sub_resource type="Gradient" id="Gradient_star"]
 offsets = PackedFloat32Array(0, 0.3, 1)
@@ -140,6 +141,7 @@ expand_mode = 1
 stretch_mode = 1
 
 [node name="TopBar" type="PanelContainer" parent="."]
+script = ExtResource("11_top_bar")
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0

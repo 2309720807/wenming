@@ -1,16 +1,9 @@
 extends Control
 
-## 养成主界面：六大模块入口 + 顶部信息栏 + 底部操作栏
+## 养成主界面：六大模块入口 + 底部操作栏 + 设置
 ## 设计依据：docs/design/game_design.md
 ## 实时制：所有系统资源随时间自然变化，无回合概念
-
-# === 顶部信息栏引用 ===
-@onready var time_label: Label = %TimeLabel
-@onready var gold_label: Label = %GoldLabel
-@onready var population_label: Label = %PopulationLabel
-@onready var happiness_label: Label = %HappinessLabel
-@onready var tech_label: Label = %TechLabel
-@onready var culture_label: Label = %CultureLabel
+## 顶部信息栏为独立组件（top_bar.gd 挂在 TopBar 节点）；消息日志见 message_log.gd
 
 # === 底部模块按钮引用 ===
 @onready var btn_populace: Button = %BtnPopulace
@@ -41,7 +34,6 @@ extends Control
 func _ready() -> void:
 	WindowManager.setup_scale_root(self)
 	_connect_signals()
-	_update_all_labels()
 	var player_display: String = GameState.player_name
 	if player_display.is_empty():
 		player_display = "引导者"
@@ -69,60 +61,9 @@ func _connect_signals() -> void:
 	btn_settings.pressed.connect(_on_settings_pressed)
 	settings_menu.redeem_succeeded.connect(message_log.add_message)
 
-	# GameState 信号（Autoload 单例，全局可访问）
-	GameState.year_changed.connect(_on_year_changed)
-	GameState.month_changed.connect(_on_month_changed)
-	GameState.gold_changed.connect(_on_gold_changed)
-	GameState.population_changed.connect(_on_population_changed)
-	GameState.happiness_changed.connect(_on_happiness_changed)
-	GameState.tech_changed.connect(_on_tech_changed)
-	GameState.culture_changed.connect(_on_culture_changed)
-
 	# TimeManager 信号
 	TimeManager.speed_changed.connect(_on_speed_changed)
 	TimeManager.paused_changed.connect(_on_paused_changed)
-
-	# BuildingSystem 信号（建筑加成变化 → 刷新顶部数值）
-	BuildingSystem.bonus_updated.connect(_on_bonus_updated)
-
-
-func _update_all_labels() -> void:
-	time_label.text = GameState.get_time_display()
-	gold_label.text = GameState.get_gold_display()
-	population_label.text = GameState.get_population_display()
-	happiness_label.text = GameState.get_happiness_display()
-	tech_label.text = GameState.get_tech_display()
-	culture_label.text = GameState.get_culture_display()
-
-
-# === 信号回调 ===
-
-func _on_year_changed(_new_year: int) -> void:
-	time_label.text = GameState.get_time_display()
-
-
-func _on_month_changed(_new_month: int) -> void:
-	time_label.text = GameState.get_time_display()
-
-
-func _on_gold_changed(_new_value: float, _rate: float) -> void:
-	gold_label.text = GameState.get_gold_display()
-
-
-func _on_population_changed(_new_value: int, _max_value: int) -> void:
-	population_label.text = GameState.get_population_display()
-
-
-func _on_happiness_changed(_new_value: int) -> void:
-	happiness_label.text = GameState.get_happiness_display()
-
-
-func _on_tech_changed(_new_value: float) -> void:
-	tech_label.text = GameState.get_tech_display()
-
-
-func _on_culture_changed(_new_value: float) -> void:
-	culture_label.text = GameState.get_culture_display()
 
 
 func _on_speed_changed(new_speed: float) -> void:
@@ -135,10 +76,6 @@ func _on_paused_changed(is_paused: bool) -> void:
 		message_log.add_message("游戏已暂停")
 	else:
 		message_log.add_message("游戏继续")
-
-
-func _on_bonus_updated() -> void:
-	_update_all_labels()
 
 
 # === 模块导航 ===
