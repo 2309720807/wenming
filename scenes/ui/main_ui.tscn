@@ -157,18 +157,18 @@ theme_override_constants/margin_right = 32
 theme_override_constants/margin_bottom = 12
 
 [node name="LeftSpacer" type="Control" parent="TopBar/HBox"]
-custom_minimum_size = Vector2(90, 0)
+custom_minimum_size = Vector2(16, 0)
 layout_mode = 2
 
 [node name="Title" type="Label" parent="TopBar/HBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.82, 1, 0.95)
 theme_override_fonts/font = ExtResource("4_font_heavy")
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 22
 text = "文明模拟器"
 
 [node name="TitleSpacer" type="Control" parent="TopBar/HBox"]
-custom_minimum_size = Vector2(90, 0)
+custom_minimum_size = Vector2(16, 0)
 layout_mode = 2
 
 [node name="Sep1" type="VSeparator" parent="TopBar/HBox"]
