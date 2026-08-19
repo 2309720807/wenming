@@ -5,6 +5,7 @@ extends Node
 ## 数据层职责：验证逻辑与发奖在此处理，UI 层仅调用 redeem()。
 
 const GIFT_CODES_PATH: String = "res://data/gift_codes.json"
+const DEBUG_CODE: String = "TIAOSHITAI"  # 开发者调试台入口（见 AGENTS.md 3.2）
 
 var _codes: Dictionary = {}
 var _redeemed: Dictionary = {}  # 已兑换码（本次运行内防重复）
@@ -23,11 +24,14 @@ func _load_codes() -> void:
 		_codes = data["codes"]
 
 
-## 兑换礼包码，返回 {ok: bool, message: String}
+## 兑换礼包码，返回 {ok: bool, message: String}；调试码返回 debug=true 标记
 func redeem(code_text: String) -> Dictionary:
 	var code: String = code_text.strip_edges().to_upper()
 	if code.is_empty():
 		return {"ok": false, "message": "请输入礼包码"}
+	if code == DEBUG_CODE:
+		# 开发者调试台：不消耗、不记入兑换记录，返回 debug 标记由 UI 打开调试台
+		return {"ok": true, "message": "调试台已开启", "debug": true}
 	if not _codes.has(code):
 		return {"ok": false, "message": "无效的礼包码"}
 	if _redeemed.has(code):

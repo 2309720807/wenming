@@ -6,6 +6,7 @@ class_name SettingsMenu
 ## UI 层职责：引用节点、绑定信号、更新显示；逻辑由 WindowManager / GiftCodeManager 处理
 
 signal redeem_succeeded(message: String)
+signal debug_requested  # 开发者调试台开启请求（礼包码 tiaoshitai，见 AGENTS.md 3.2）
 
 @onready var resolution_option: OptionButton = %ResolutionOption
 @onready var gift_code_input: LineEdit = %GiftCodeInput
@@ -32,6 +33,7 @@ func open() -> void:
 	gift_result_label.text = ""
 	gift_code_input.clear()
 	show()
+	UiAnim.panel_enter(self)  # 面板入场动画（纯视觉）
 
 
 func close() -> void:
@@ -60,7 +62,10 @@ func _on_redeem_pressed() -> void:
 	gift_code_input.clear()
 	gift_result_label.text = result["message"]
 	gift_result_label.modulate = Color(0.55, 1, 0.6, 1) if result["ok"] else Color(1, 0.6, 0.5, 1)
-	if result["ok"]:
+	if result.get("debug", false):
+		# 开发者调试码：交由主界面打开调试台，不记入普通兑换消息
+		debug_requested.emit()
+	elif result["ok"]:
 		redeem_succeeded.emit(result["message"])
 
 

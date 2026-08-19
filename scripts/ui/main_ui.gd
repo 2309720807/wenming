@@ -23,6 +23,9 @@ extends Control
 @onready var btn_settings: Button = %BtnSettings
 @onready var settings_menu: SettingsMenu = %SettingsMenu
 
+# === 开发者调试台（入口：礼包码 tiaoshitai，见 AGENTS.md 3.2）===
+var debug_console: DebugConsole
+
 # === 中央区域 ===
 @onready var placeholder_label: Label = %PlaceholderLabel
 @onready var explore_map: Control = %ExploreMap
@@ -33,6 +36,9 @@ extends Control
 
 func _ready() -> void:
 	WindowManager.setup_scale_root(self)
+	debug_console = DebugConsole.new()
+	debug_console.name = "DebugConsole"
+	add_child(debug_console)
 	_connect_signals()
 	var player_display: String = GameState.player_name
 	if player_display.is_empty():
@@ -40,6 +46,15 @@ func _ready() -> void:
 	message_log.add_message("欢迎你，%s！你的文明刚刚起步。" % player_display)
 	# 默认进入地图与探索界面（网格建设）
 	_on_module_pressed("explore")
+	# 界面美化：面板入场 + 按钮动效（UiAnim，纯视觉）
+	UiAnim.panel_enter($TopBar)
+	UiAnim.panel_enter($BottomBar, 0.06)
+	UiAnim.panel_enter($MessagePanel, 0.12)
+	for btn: Button in [
+		btn_populace, btn_tech, btn_economy, btn_military, btn_culture, btn_explore,
+		btn_pause, btn_speed1, btn_speed2, btn_speed3, btn_settings,
+	]:
+		UiAnim.attach_button(btn)
 
 
 func _connect_signals() -> void:
@@ -60,6 +75,7 @@ func _connect_signals() -> void:
 	# 设置面板
 	btn_settings.pressed.connect(_on_settings_pressed)
 	settings_menu.redeem_succeeded.connect(message_log.add_message)
+	settings_menu.debug_requested.connect(_on_debug_requested)
 
 	# TimeManager 信号
 	TimeManager.speed_changed.connect(_on_speed_changed)
@@ -137,6 +153,12 @@ func _on_speed_pressed(speed: float) -> void:
 
 func _on_settings_pressed() -> void:
 	settings_menu.open()
+
+
+func _on_debug_requested() -> void:
+	settings_menu.close()
+	debug_console.open()
+	message_log.add_message("开发者调试台已开启")
 
 
 func _update_speed_buttons(active_speed: int) -> void:
