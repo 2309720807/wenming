@@ -24,7 +24,11 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	# 退出：保存自动存档（保住退出前进度）+ 记录结算时间戳
+	# 仅真实游戏场景（登录/主界面）退出时保存自动存档并记时间戳；
+	# -s 测试脚本无 current_scene，不写入，避免污染用户存档目录
+	var scene: Node = get_tree().current_scene
+	if scene == null:
+		return
 	save_game(AUTOSAVE_ROLE)
 	_write_last_seen()
 
@@ -41,6 +45,11 @@ func _settle_offline_gains() -> void:
 	var loaded: Dictionary = load_game(AUTOSAVE_ROLE + ".json")
 	if not loaded["ok"]:
 		return
+	# 防御异常存档：网格全空且无建筑（如旧版本/测试残留）时重新生成开局障碍，
+	# 避免把随机树/石头/湖泊等阻挡物覆盖掉
+	if _grid_all_empty(BuildingSystem.grid) and BuildingSystem.placed.is_empty():
+		BuildingGrid.generate_obstacles(BuildingSystem.grid, BuildingSystem.obstacles_data,
+				BuildingSystem.GRID_W, BuildingSystem.GRID_H)
 	last_offline_gains = OfflineGains.apply_offline(elapsed)
 	save_game(AUTOSAVE_ROLE)
 	_write_last_seen()
@@ -53,6 +62,14 @@ func _read_last_seen() -> float:
 	if not FileAccess.file_exists(LAST_SEEN_PATH):
 		return 0.0
 	return float(FileAccess.get_file_as_string(LAST_SEEN_PATH).strip_edges())
+
+
+func _grid_all_empty(grid: Array) -> bool:
+	for col: Array in grid:
+		for mark: Variant in col:
+			if str(mark) != "":
+				return false
+	return true
 
 
 func _write_last_seen() -> void:
