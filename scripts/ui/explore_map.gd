@@ -26,6 +26,23 @@ func _ready() -> void:
 	info_panel.hide()
 	action_panel.hide()
 	info_hint.text = "选择左侧建筑后，点击网格放置；点击障碍可花费金币清除"
+	_add_summary_panel()
+
+
+func _add_summary_panel() -> void:
+	# 建筑产出总览：悬于网格下方空白区，鼠标穿透不阻挡建造点击
+	var summary := MapSummary.new()
+	summary.name = "SummaryPanel"
+	summary.anchor_left = 0.0
+	summary.anchor_top = 0.0
+	summary.anchor_right = 0.0
+	summary.anchor_bottom = 0.0
+	summary.offset_left = 260.0
+	summary.offset_top = 596.0
+	summary.offset_right = 1270.0
+	summary.offset_bottom = 680.0
+	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(summary)
 
 
 func _connect_signals() -> void:
