@@ -7,8 +7,10 @@ extends Node
 const SAVE_DIR: String = "user://saves/"
 const AUTOSAVE_INTERVAL: float = 10.0  # 自动保存间隔（秒）
 const AUTOSAVE_ROLE: String = "自动存档"
+const LAST_SEEN_PATH: String = "user://saves/.last_seen"  # 上次结算时间戳
 
 var _autosave_timer: Timer
+var last_offline_gains: Dictionary = {}  # 最近一次离线挂机结算 {"seconds", "months", "gold"}
 
 
 func _ready() -> void:
@@ -18,6 +20,45 @@ func _ready() -> void:
 	_autosave_timer.timeout.connect(_on_autosave)
 	add_child(_autosave_timer)
 	_autosave_timer.start()
+	_settle_offline_gains()
+
+
+func _exit_tree() -> void:
+	# 退出：保存自动存档（保住退出前进度）+ 记录结算时间戳
+	save_game(AUTOSAVE_ROLE)
+	_write_last_seen()
+
+
+func _settle_offline_gains() -> void:
+	# 启动：读取上次退出时间戳 → 若有自动存档则加载并结算离线收益 → 写回自动存档
+	var last: float = _read_last_seen()
+	_write_last_seen()
+	if last <= 0.0:
+		return
+	var elapsed: float = float(Time.get_unix_time_from_system()) - last
+	if elapsed <= 0.0 or not FileAccess.file_exists(SAVE_DIR + AUTOSAVE_ROLE + ".json"):
+		return
+	var loaded: Dictionary = load_game(AUTOSAVE_ROLE + ".json")
+	if not loaded["ok"]:
+		return
+	last_offline_gains = OfflineGains.apply_offline(elapsed)
+	save_game(AUTOSAVE_ROLE)
+	_write_last_seen()
+	print("离线挂机结算：%.1f 秒（%.1f 月），金币 +%d" % [
+		elapsed, last_offline_gains.get("months", 0.0), int(last_offline_gains.get("gold", 0)),
+	])
+
+
+func _read_last_seen() -> float:
+	if not FileAccess.file_exists(LAST_SEEN_PATH):
+		return 0.0
+	return float(FileAccess.get_file_as_string(LAST_SEEN_PATH).strip_edges())
+
+
+func _write_last_seen() -> void:
+	var f := FileAccess.open(LAST_SEEN_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string("%d" % int(Time.get_unix_time_from_system()))
 
 
 func _on_autosave() -> void:
@@ -26,6 +67,7 @@ func _on_autosave() -> void:
 	if scene == null or scene.name != "MainUI":
 		return
 	save_game(AUTOSAVE_ROLE)
+	_write_last_seen()  # 同步结算点，崩溃时最多损失一个自动保存间隔
 
 
 ## 保存当前游戏状态到指定角色存档，返回 {ok, file_name, message}

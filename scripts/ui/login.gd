@@ -21,6 +21,17 @@ func _ready() -> void:
 	# 界面美化：面板入场 + 按钮动效（UiAnim，纯视觉）
 	UiAnim.panel_enter(panel)
 	UiAnim.attach_button(start_button)
+	# 离线挂机收益提示（SaveManager 启动时已结算）
+	var offline: Dictionary = SaveManager.last_offline_gains
+	if offline.get("seconds", 0.0) > 0.0:
+		var hours: float = float(offline["seconds"]) / 3600.0
+		var offline_label := Label.new()
+		offline_label.text = "⏳ 离线挂机 %.1f 小时：金币 +%d" % [hours, int(offline.get("gold", 0))]
+		offline_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		offline_label.add_theme_font_override("font", preload("res://assets/fonts/SourceHanSansCN-Bold.ttf"))
+		offline_label.add_theme_font_size_override("font_size", 13)
+		offline_label.add_theme_color_override("font_color", Color(1, 0.85, 0.4, 1))
+		panel_vbox.add_child(offline_label)
 	# 开发者本地存档列表（见 SaveManager / AGENTS.md 3.2）
 	var divider := HSeparator.new()
 	divider.add_theme_color_override("separator", Color(0.35, 0.7, 1, 0.25))
