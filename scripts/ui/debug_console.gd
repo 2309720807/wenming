@@ -90,6 +90,7 @@ func _build_ui() -> void:
 	stats.name = "DebugStatsPanel"
 	content.add_child(stats)
 	content.add_child(DebugAssetsView.new())
+	content.add_child(DebugSavePanel.new())
 
 
 func _build_speed_group() -> VBoxContainer:
