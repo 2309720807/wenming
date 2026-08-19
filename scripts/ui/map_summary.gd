@@ -102,7 +102,11 @@ func refresh() -> void:
 			totals[stat_key] += float(bonuses.get(stat_key, 0.0)) * float(level)
 	for def: Dictionary in STAT_DEFS:
 		var stat_key: String = def["key"]
-		_value_labels[stat_key].text = _format(float(totals[stat_key]), def["is_float"])
+		var label: Label = _value_labels[stat_key]
+		var new_text: String = _format(float(totals[stat_key]), def["is_float"])
+		if label.text != new_text:
+			label.text = new_text
+			UiAnim.value_flash(label)  # 数值变化闪烁提示
 
 
 func _format(value: float, is_float: bool) -> String:

@@ -66,7 +66,11 @@ func _add_card(item: Dictionary) -> void:
 	click.set_anchors_preset(Control.PRESET_FULL_RECT)
 	click.flat = true
 	click.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	click.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	# 悬停高亮：半透明白色底（纯视觉）
+	var hover_sb := StyleBoxFlat.new()
+	hover_sb.bg_color = Color(0.45, 0.7, 1, 0.14)
+	hover_sb.set_corner_radius_all(8)
+	click.add_theme_stylebox_override("hover", hover_sb)
 	click.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	click.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	click.pressed.connect(_on_card_pressed.bind(item, card))

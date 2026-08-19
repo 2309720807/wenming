@@ -6,6 +6,7 @@ extends Control
 @onready var name_input: LineEdit = %NameInput
 @onready var start_button: Button = %StartButton
 @onready var error_label: Label = %ErrorLabel
+@onready var panel: PanelContainer = $CenterContainer/Panel
 
 var player_name: String = ""
 
@@ -16,6 +17,9 @@ func _ready() -> void:
 	name_input.text_submitted.connect(_on_start_pressed)
 	error_label.visible = false
 	name_input.grab_focus()
+	# 界面美化：面板入场 + 按钮动效（UiAnim，纯视觉）
+	UiAnim.panel_enter(panel)
+	UiAnim.attach_button(start_button)
 
 
 func _show_error(message: String) -> void:
