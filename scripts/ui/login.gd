@@ -7,6 +7,7 @@ extends Control
 @onready var start_button: Button = %StartButton
 @onready var error_label: Label = %ErrorLabel
 @onready var panel: PanelContainer = $CenterContainer/Panel
+@onready var panel_vbox: VBoxContainer = $CenterContainer/Panel/VBox
 
 var player_name: String = ""
 
@@ -20,6 +21,22 @@ func _ready() -> void:
 	# 界面美化：面板入场 + 按钮动效（UiAnim，纯视觉）
 	UiAnim.panel_enter(panel)
 	UiAnim.attach_button(start_button)
+	# 开发者本地存档列表（见 SaveManager / AGENTS.md 3.2）
+	var divider := HSeparator.new()
+	divider.add_theme_color_override("separator", Color(0.35, 0.7, 1, 0.25))
+	panel_vbox.add_child(divider)
+	var save_list := SaveList.new()
+	save_list.name = "SaveList"
+	save_list.save_loaded.connect(_on_save_loaded)
+	save_list.save_deleted.connect(func(_f: String) -> void: print("存档已删除"))
+	panel_vbox.add_child(save_list)
+
+
+func _on_save_loaded(file_name: String) -> void:
+	# 加载本地存档：恢复 GameState 与建造状态后直接进入主界面
+	var result: Dictionary = SaveManager.load_game(file_name)
+	print(result["message"])
+	get_tree().change_scene_to_file("res://scenes/ui/main_ui.tscn")
 
 
 func _show_error(message: String) -> void:

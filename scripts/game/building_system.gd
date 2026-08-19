@@ -1,10 +1,7 @@
 extends Node
 
-## 建造系统（Autoload 单例）：网格地图状态、建筑放置/建造进度/障碍清除、加成重算
-## 数据来源：data/buildings.json（BuildingData 加载）
-## 模块划分：BuildingData（数据加载）、BuildingGrid（网格/障碍）、
-##           BuildingBalance（费用/加成）、BuildingActions（建筑操作）
-## 设计依据：docs/design/game_design.md 3.7
+## 建造系统（Autoload 单例）：网格状态、建筑操作、施工计时、加成重算。
+## 模块：BuildingData（数据）、BuildingGrid（网格）、BuildingBalance（数值）、BuildingActions（操作）
 
 # === 信号 ===
 signal grid_changed(cell: Vector2i)
@@ -21,16 +18,13 @@ var GRID_W: int = BuildingData.DEFAULT_GRID_W
 var GRID_H: int = BuildingData.DEFAULT_GRID_H
 var cell_size: int = BuildingData.DEFAULT_CELL_SIZE
 
-# === 数据配置（由 JSON 加载）===
 var buildings_data: Dictionary = {}
 var decorations_data: Dictionary = {}
 var obstacles_data: Dictionary = {}
 
 # === 网格状态 ===
-# grid[x][y]："" 空 / "occ" 被占用 / "obs:岩石" 障碍
+# grid[x][y]："" 空 / "occ" 占用 / "obs:障碍id"；placed："x,y" -> 建筑字典（op：""空闲/"build"/"upgrade"/"demolish"）
 var grid: Array = []
-# placed："x,y" -> {"item_id", "width", "height", "remaining", "total", "completed", "level", "op"}
-# op："" 空闲 / "build" 建造中 / "upgrade" 升级中 / "demolish" 拆除中
 var placed: Dictionary = {}
 
 # === 基础数值快照（重算加成时以它们为基准）===
@@ -63,8 +57,6 @@ func _load_data() -> void:
 	cell_size = data["cell_size"]
 
 
-# === 查询 ===
-
 func get_item(item_id: String) -> Dictionary:
 	return BuildingData.get_item(buildings_data, decorations_data, item_id)
 
@@ -92,12 +84,6 @@ func get_placed_key(cell: Vector2i) -> String:
 	return BuildingGrid.get_placed_key(placed, cell)
 
 
-func get_placed_list() -> Dictionary:
-	return placed
-
-
-# === 建筑操作（委托 BuildingActions）===
-
 func place_item(cell: Vector2i, item_id: String) -> bool:
 	return _actions.place_item(cell, item_id)
 
@@ -118,8 +104,6 @@ func clear_obstacle(cell: Vector2i) -> bool:
 	return _actions.clear_obstacle(cell)
 
 
-# === 费用计算（委托 BuildingBalance）===
-
 func get_upgrade_cost(p: Dictionary) -> float:
 	var item: Dictionary = get_item(p.get("item_id", ""))
 	return BuildingBalance.get_upgrade_cost(item, int(p.get("level", 1)))
@@ -130,13 +114,30 @@ func get_demolish_refund(p: Dictionary) -> float:
 	return BuildingBalance.get_demolish_refund(item, int(p.get("level", 1)))
 
 
-# === 施工计时 ===
+func restore_state(grid_data: Array, placed_data: Dictionary, base_stats: Dictionary) -> void:
+	# 恢复网格/建筑/基础快照并重算加成（SaveManager 加载时调用）
+	# 存档网格尺寸不符（如旧版本/异常存档）时重新生成，避免绘制越界
+	if grid_data.size() == GRID_W:
+		grid = grid_data
+	else:
+		grid = BuildingGrid.init_grid(GRID_W, GRID_H)
+		BuildingGrid.generate_obstacles(grid, obstacles_data, GRID_W, GRID_H)
+	placed = placed_data
+	base_gold_rate = float(base_stats.get("gold_rate", 0.0))
+	base_pop_max = int(base_stats.get("pop_max", 0))
+	base_pop_growth_rate = float(base_stats.get("pop_growth_rate", 0.0))
+	base_tech_rate = float(base_stats.get("tech_rate", 0.0))
+	base_culture_rate = float(base_stats.get("culture_rate", 0.0))
+	base_happiness = int(base_stats.get("happiness", 0))
+	_recalculate_bonuses()
+	grid_changed.emit(Vector2i.ZERO)
+
 
 func _process(delta: float) -> void:
 	# 推进建造/升级/拆除进度（暂停时不动；随游戏倍速加速）
 	if TimeManager.is_paused:
 		return
-	var step: float = delta * TimeManager.time_speed
+	var step: float = delta * TimeManager.time_speed  # 施工进度随倍速加速
 	var finished: Array[String] = []
 	for key: String in placed:
 		var p: Dictionary = placed[key]
@@ -175,10 +176,7 @@ func _process_finished(key: String) -> void:
 			building_demolished.emit(anchor, item_id)
 
 
-# === 加成重算 ===
-
 func _snapshot_base_stats() -> void:
-	# 记录无建筑时的基础数值，重算时 = 基础 + 建筑加成
 	base_gold_rate = GameState.gold_rate
 	base_pop_max = GameState.pop_max
 	base_pop_growth_rate = GameState.pop_growth_rate
@@ -194,7 +192,7 @@ func _recalculate_bonuses() -> void:
 	GameState.pop_growth_rate = base_pop_growth_rate + float(bonuses.get("pop_growth_rate", 0.0))
 	GameState.tech_rate = base_tech_rate + float(bonuses.get("tech_rate", 0.0))
 	GameState.culture_rate = base_culture_rate + float(bonuses.get("culture_rate", 0.0))
-	# 幸福度只增不降：建筑带来的幸福度下限，防止月度波动抹掉建筑价值
+	# 幸福度只增不降：建筑带来下限，防止月度波动抹掉建筑价值
 	if GameState.happiness < base_happiness + int(bonuses.get("happiness", 0)):
 		GameState.set_happiness(base_happiness + int(bonuses.get("happiness", 0)))
 	bonus_updated.emit()
