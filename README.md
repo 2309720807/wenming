@@ -45,6 +45,13 @@
   - **游戏分辨率**：下拉选择 1280×720 / 1600×900 / 1920×1080 / 2560×1440，选择即应用（`WindowManager`）
   - **礼包码**：输入兑换金币奖励，数据配置于 `data/gift_codes.json`，防重复兑换（`GiftCodeManager` Autoload）
   - **退出游戏**：确认对话框后退出
+  - **开发者调试台**：输入礼包码 `tiaoshitai`（大小写不敏感）开启，可调倍速（1x-10x）/暂停、GameState 全部数值 +/- 调节、游戏资产数据浏览（详见 AGENTS.md 3.2）
+
+- **UI 美化**：
+  - 全局玻璃质感深蓝视觉：圆角高光边框 + 发光阴影（登录/主界面/探索/设置面板统一）
+  - 按钮动效：悬停放大 + 按下微缩（`scripts/ui/ui_anim.gd`）
+  - 面板入场动画：淡入 + 轻微放大（登录面板/顶栏/底栏/消息日志/设置面板）
+  - 汇总面板数值变化闪烁、建筑菜单卡片悬停高亮
 
 - **窗口设置**：
   - 1280×720 设计分辨率（测试窗口规范，防止系统窗口遮挡影响测试截图），关闭引擎 stretch
@@ -71,7 +78,7 @@
 | `scenes/game/` | 游戏世界场景 |
 | `scripts/` | GDScript 脚本（外部 `.gd`，不在场景内嵌逻辑） |
 | `scripts/data/` | 数据层：GameState（游戏状态）、TimeManager（时间管理）等 Autoload 单例 |
-| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd、message_log.gd、top_bar.gd、explore_map.gd、grid_view.gd、building_menu.gd、building_action_panel.gd、building_info.gd、building_feedback.gd、settings_menu.gd、map_summary.gd 等） |
+| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd、message_log.gd、top_bar.gd、explore_map.gd、grid_view.gd、building_menu.gd、building_action_panel.gd、building_info.gd、building_feedback.gd、settings_menu.gd、map_summary.gd、debug_console.gd、debug_stats_panel.gd、debug_assets_view.gd、ui_anim.gd 等） |
 | `scripts/game/` | 游戏逻辑层：建造系统（building_system.gd 薄壳 + building_data/grid/balance/actions 模块） |
 | `scenes/ui/explore/` | 地图与探索界面场景（网格建设） |
 | `assets/` | 美术 / 音频 / 字体资源 |

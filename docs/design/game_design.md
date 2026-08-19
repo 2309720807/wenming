@@ -126,12 +126,24 @@
 - **游戏分辨率**：下拉选择 1280×720 / 1600×900 / 1920×1080 / 2560×1440，选择即应用（窗口切换至对应分辨率，UI 按新分辨率矢量重绘，清晰且不错位；窗口自动居中）
 - **礼包码**：输入礼包码并兑换，发放金币奖励；大小写不敏感，同一码本次运行内不可重复兑换；礼包码配置于 `data/gift_codes.json`（数据驱动）
 - **退出游戏**：点击后弹出确认对话框（内置 ConfirmationDialog），确认后退出游戏
+- **开发者调试台**：输入礼包码 `tiaoshitai`（大小写不敏感，GiftCodeManager 特判，不记入兑换记录）开启调试台：
+  - 时间控制：倍速 1x/2x/3x/5x/10x、暂停/继续
+  - 数值调试：GameState 全部公开数值（资源/速率/人口/幸福度/科技/文化点数）+/- 实时调节
+  - 资产浏览：建筑/装饰/障碍物/礼包码实时列出（从数据源读取，新增条目自动出现）
+  - 实现：`scripts/ui/debug_console.gd`（框架）+ `debug_stats_panel.gd`（数值）+ `debug_assets_view.gd`（资产），规则见 AGENTS.md 3.2
 
 **模块划分**：
 - `data/gift_codes.json` — 礼包码数据配置（数据驱动）
-- `scripts/data/gift_code_manager.gd` — 礼包码管理器 Autoload：加载配置、校验、发奖（GameState.add_gold）、防重复兑换
+- `scripts/data/gift_code_manager.gd` — 礼包码管理器 Autoload：加载配置、校验、发奖（GameState.add_gold）、防重复兑换、调试码特判
 - `scripts/ui/settings_menu.gd` — 设置面板 UI：分辨率下拉、礼包码输入、退出确认，仅调用 WindowManager/GiftCodeManager，不含业务逻辑
 - `scenes/ui/settings_menu.tscn` — 设置面板场景（居中弹窗，实例化于主界面）
+- `scripts/ui/debug_console.gd` — 开发者调试台框架（挂载于主界面）
+- `scripts/ui/debug_stats_panel.gd` — 调试台数值调试面板
+- `scripts/ui/debug_assets_view.gd` — 调试台资产数据浏览面板
+
+**UI 动效（界面打磨）**：
+- `scripts/ui/ui_anim.gd` — 通用动效工具（UiAnim）：按钮悬停放大/按下微缩、面板入场淡入+放大、数值变化闪烁
+- 统一视觉：深蓝玻璃质感（圆角高光边框 + 发光阴影），登录/主界面/探索/设置面板一致
 
 ## 4. 界面UI布局
 
@@ -258,6 +270,8 @@ res://
 - [x] **窗口等比例缩放**（关闭 stretch，根 Control 矢量等比缩放：任意分辨率清晰、布局坐标系恒定不错位）
 - [x] **设置系统**（底栏设置按钮：分辨率切换、礼包码兑换、退出游戏）
 - [x] **地图界面增强：建筑产出总览面板**（实时汇总建筑加成，scripts/ui/map_summary.gd）
+- [x] **开发者调试台**（礼包码 tiaoshitai：倍速/数值/资产浏览，AGENTS.md 3.2）
+- [x] **UI 美化与动效**（玻璃质感视觉统一、按钮悬停/按下动画、面板入场、数值闪烁）
 - [ ] 核心循环打通
 - [ ] 内容扩展：六大模块完整化
 - [ ] 正式化：音效、打磨、存档
