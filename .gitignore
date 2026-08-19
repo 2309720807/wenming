@@ -7,3 +7,6 @@
 
 # 增量备份工作树（独立 git 仓库，不纳入主仓库）
 /wenmingzengliang/
+
+# 协作工具工作日志（.workbuddy 会话记忆，不入库）
+/.workbuddy/
