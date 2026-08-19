@@ -5,10 +5,27 @@ extends Node
 ## 规则依据：AGENTS.md 3.2（调试工具）；数据层职责：序列化/反序列化/目录管理
 
 const SAVE_DIR: String = "user://saves/"
+const AUTOSAVE_INTERVAL: float = 10.0  # 自动保存间隔（秒）
+const AUTOSAVE_ROLE: String = "自动存档"
+
+var _autosave_timer: Timer
 
 
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+	_autosave_timer = Timer.new()
+	_autosave_timer.wait_time = AUTOSAVE_INTERVAL
+	_autosave_timer.timeout.connect(_on_autosave)
+	add_child(_autosave_timer)
+	_autosave_timer.start()
+
+
+func _on_autosave() -> void:
+	# 仅在游戏主界面运行期间自动保存，避免登录/其他界面覆盖"自动存档"槽
+	var scene: Node = get_tree().current_scene
+	if scene == null or scene.name != "MainUI":
+		return
+	save_game(AUTOSAVE_ROLE)
 
 
 ## 保存当前游戏状态到指定角色存档，返回 {ok, file_name, message}
