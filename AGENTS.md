@@ -44,6 +44,8 @@
    - **`docs/design/game_design.md`**（游戏设计文档）：若改动涉及新增/修改功能模块、界面布局、系统机制，必须同步更新设计文档中对应的章节（如新增界面需更新"技术架构"目录结构、"当前开发阶段"进度；新增系统需更新"六大核心养成方向"等）。更新后需告知用户确认。
    - **`README.md`**（项目说明文档）：若改动影响项目目录结构、运行方式、当前进度、脚本工具说明等，必须同步更新 README.md 中对应章节（如新增目录需更新"目录结构"表、新增场景需更新"当前进度"、新增脚本需更新"脚本工具"表）。README 应始终反映项目最新状态，方便其他开发者和 AI Agent 快速了解项目。
 
+10. **MCP 链接修改（必须遵守）**：当存在 Godot AI MCP 链接（用 `godot_mcp_status` 检查到已连接的编辑器会话）时，**所有对游戏工程文件的修改必须链接 MCP、通过 MCP 端口连接修改**——使用 Godot AI MCP 工具（`filesystem_manage`、`script_create` / `script_patch` / `script_manage`、`scene_manage`、`node_manage`、`resource_manage`、`project_manage` 等）在编辑器会话中完成；**禁止绕过 MCP 用文件工具直接改写游戏工程文件**（场景 `.tscn`、脚本 `.gd`、资源 `.tres`/`.res`、`project.godot`、`data/*.json` 等）。仅当 MCP 未连接或不可用时，才允许用文件工具直接编辑。
+
 ## 3. 代码规范（GDScript）
 
 - 使用 4 空格缩进；变量/函数命名遵循 Godot 官方风格（`snake_case`）。

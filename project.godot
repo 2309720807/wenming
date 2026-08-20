@@ -23,6 +23,7 @@ BuildingSystem="*res://scripts/game/building_system.gd"
 WindowManager="*res://scripts/data/window_manager.gd"
 GiftCodeManager="*res://scripts/data/gift_code_manager.gd"
 SaveManager="*res://scripts/data/save_manager.gd"
+_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]
 
@@ -31,7 +32,7 @@ window/size/viewport_height=720
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/agent/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
 
 [gui]
 
