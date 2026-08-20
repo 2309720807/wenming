@@ -143,6 +143,44 @@ func get_culture_display() -> String:
 	return "文化 %d" % int(culture_points)
 
 
+func reset_state() -> void:
+	## 新游戏开局：恢复全部初始默认值并广播信号（登录新建游戏时调用，
+	## 避免新建游戏继承上次自动存档状态）
+	player_name = ""
+	year = 1
+	month = 1
+	gold = 100.0
+	gold_rate = 5.0
+	population = 10
+	pop_max = 50
+	pop_growth_rate = 0.2
+	pop_growth_accumulator = 0.0
+	happiness = 75
+	food = 50.0
+	food_rate = 2.0
+	wood = 30.0
+	wood_rate = 1.0
+	stone = 20.0
+	stone_rate = 0.5
+	metal = 10.0
+	metal_rate = 0.2
+	tech_points = 0.0
+	tech_rate = 0.5
+	culture_points = 0.0
+	culture_rate = 0.4
+	year_changed.emit(year)
+	month_changed.emit(month)
+	gold_changed.emit(gold, gold_rate)
+	population_changed.emit(population, pop_max)
+	happiness_changed.emit(happiness)
+	food_changed.emit(food, food_rate)
+	wood_changed.emit(wood)
+	stone_changed.emit(stone)
+	metal_changed.emit(metal)
+	tech_changed.emit(tech_points)
+	culture_changed.emit(culture_points)
+
+
 func restore_state(data: Dictionary) -> void:
 	## 从存档数据恢复全部数值并广播信号（供 SaveManager 加载）
 	player_name = str(data.get("player_name", ""))

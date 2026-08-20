@@ -51,6 +51,8 @@ func _settle_offline_gains() -> void:
 		BuildingSystem.BuildingGrid.generate_obstacles(BuildingSystem.grid, BuildingSystem.obstacles_data,
 				BuildingSystem.GRID_W, BuildingSystem.GRID_H)
 	last_offline_gains = OfflineGains.apply_offline(elapsed)
+	# 离线结算推进了年月，重新对齐 TimeManager 时间，防止 _process 把时间覆盖回去
+	TimeManager.sync_to_save(GameState.year, GameState.month)
 	save_game(AUTOSAVE_ROLE)
 	_write_last_seen()
 	print("离线挂机结算：%.1f 秒（%.1f 月），金币 +%d" % [
@@ -141,6 +143,8 @@ func load_game(file_name: String) -> Dictionary:
 	GameState.restore_state(parsed)
 	BuildingSystem.restore_state(
 		parsed.get("grid", []), parsed.get("placed", {}), parsed.get("base_stats", {}))
+	# 同步游戏时间：避免 TimeManager 用"本次启动运行时长"覆盖存档年月（修复：不同存档进入后时间被抹平）
+	TimeManager.sync_to_save(GameState.year, GameState.month)
 	return {"ok": true, "message": "已加载存档：%s" % file_name.trim_suffix(".json")}
 
 

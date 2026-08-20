@@ -65,6 +65,10 @@ func _on_start_pressed(_text: String = "") -> void:
 		_show_error("请输入玩家昵称")
 		return
 	player_name = name_value
+	# 新建游戏 = 全新开局：重置数据/建造/时间状态，避免继承自动存档（修复：不同存档进入后内容相同）
+	GameState.reset_state()
+	BuildingSystem.reset_state()
+	TimeManager.reset_time()
 	GameState.player_name = player_name  # 存入数据层，供主界面等模块使用
 	error_label.visible = false
 	print("登录成功，玩家：", player_name)

@@ -116,6 +116,17 @@ func get_demolish_refund(p: Dictionary) -> float:
 	var item: Dictionary = get_item(p.get("item_id", ""))
 	return BuildingBalance.get_demolish_refund(item, int(p.get("level", 1)))
 
+func reset_state() -> void:
+	## 新游戏开局：重新生成空网格与随机障碍、清空已放置建筑并重算基础加成
+	## （登录新建游戏时调用，避免新建游戏继承上次存档的建造状态）
+	grid = BuildingGrid.init_grid(GRID_W, GRID_H)
+	BuildingGrid.generate_obstacles(grid, obstacles_data, GRID_W, GRID_H)
+	placed = {}
+	_snapshot_base_stats()
+	_recalculate_bonuses()
+	grid_changed.emit(Vector2i.ZERO)
+
+
 func restore_state(grid_data: Array, placed_data: Dictionary, base_stats: Dictionary) -> void:
 	# 恢复网格/建筑/基础快照并重算加成（SaveManager 加载时调用）
 	# 存档网格尺寸不符（如旧版本/异常存档）时重新生成，避免绘制越界

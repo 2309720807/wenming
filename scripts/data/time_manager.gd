@@ -76,3 +76,15 @@ func get_speed() -> float:
 
 func get_pause_state() -> bool:
 	return is_paused
+
+
+func reset_time() -> void:
+	## 新游戏开局：游戏时间归零（第 1 年 1 月），避免继承上次存档时间
+	game_time = 0.0
+	GameState.set_month(1, 1)
+
+
+func sync_to_save(year: int, month: int) -> void:
+	## 加载存档后对齐游戏时间：game_time 换算为存档年月对应的累计秒数，
+	## 避免 _process 用"本次启动运行时长"覆盖存档时间（修复：不同存档进入后时间被抹平）
+	game_time = float(((year - 1) * 12 + (month - 1)) * SECONDS_PER_MONTH)

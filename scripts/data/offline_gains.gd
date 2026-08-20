@@ -28,6 +28,8 @@ static func apply_offline(seconds: float) -> Dictionary:
 			_apply_linear(next_event)
 			_advance_construction(next_event)
 			remaining -= next_event
+	# 离线结算推进了年月，重新对齐 TimeManager 时间，防止 _process 把时间覆盖回去（调试台模拟同样受益）
+	TimeManager.sync_to_save(GameState.year, GameState.month)
 	report["gold"] = GameState.gold - gold_before
 	return report
 
