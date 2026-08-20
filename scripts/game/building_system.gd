@@ -1,7 +1,10 @@
 extends Node
 
 ## 建造系统（Autoload 单例）：网格状态、建筑操作、施工计时、加成重算。
-## 模块：BuildingData（数据）、BuildingGrid（网格）、BuildingBalance（数值）、BuildingActions（操作）
+## 设计依据：docs/design/game_design.md 3.7
+## 同系统小模块已合并为内部类（避免过度拆分，见 AGENTS.md 3.1）：
+##   BuildingData（数据加载）、BuildingGrid（网格工具）、BuildingBalance（数值平衡）、BuildingActions（建筑操作）
+## 其他脚本访问内部类需带 BuildingSystem 前缀，如 BuildingSystem.BuildingGrid.key_to_cell(...)
 
 # === 信号 ===
 signal grid_changed(cell: Vector2i)
@@ -113,7 +116,6 @@ func get_demolish_refund(p: Dictionary) -> float:
 	var item: Dictionary = get_item(p.get("item_id", ""))
 	return BuildingBalance.get_demolish_refund(item, int(p.get("level", 1)))
 
-
 func restore_state(grid_data: Array, placed_data: Dictionary, base_stats: Dictionary) -> void:
 	# 恢复网格/建筑/基础快照并重算加成（SaveManager 加载时调用）
 	# 存档网格尺寸不符（如旧版本/异常存档）时重新生成，避免绘制越界
@@ -196,3 +198,350 @@ func _recalculate_bonuses() -> void:
 	if GameState.happiness < base_happiness + int(bonuses.get("happiness", 0)):
 		GameState.set_happiness(base_happiness + int(bonuses.get("happiness", 0)))
 	bonus_updated.emit()
+
+
+# ================= 内部类（同系统小模块，原独立文件已合并） =================
+
+# === 建造数据加载（原 building_data.gd）===
+class BuildingData:
+	extends RefCounted
+
+	## 建造数据加载：读取 data/buildings.json，提供建筑/装饰/障碍物查询。
+	## 设计依据：docs/design/game_design.md 3.7（数据驱动，平衡调整只改 JSON）
+
+	const DATA_PATH: String = "res://data/buildings.json"
+	const DEFAULT_GRID_W: int = 25
+	const DEFAULT_GRID_H: int = 14
+	const DEFAULT_CELL_SIZE: int = 40
+
+
+	static func load_all() -> Dictionary:
+		## 返回 {buildings, decorations, obstacles, grid_w, grid_h, cell_size}
+		var result: Dictionary = {
+			"buildings": {},
+			"decorations": {},
+			"obstacles": {},
+			"grid_w": DEFAULT_GRID_W,
+			"grid_h": DEFAULT_GRID_H,
+			"cell_size": DEFAULT_CELL_SIZE,
+		}
+		var file: FileAccess = FileAccess.open(DATA_PATH, FileAccess.READ)
+		if file == null:
+			push_error("无法读取 buildings.json")
+			return result
+		var parsed: Variant = JSON.parse_string(file.get_as_text())
+		if parsed is not Dictionary:
+			push_error("buildings.json 格式错误")
+			return result
+		# 网格尺寸以 JSON 为准（数据驱动），缺失时回退默认值
+		result["grid_w"] = int(parsed.get("grid_width", DEFAULT_GRID_W))
+		result["grid_h"] = int(parsed.get("grid_height", DEFAULT_GRID_H))
+		result["cell_size"] = int(parsed.get("cell_size", DEFAULT_CELL_SIZE))
+		for b: Dictionary in parsed.get("buildings", []):
+			result["buildings"][b["id"]] = b
+		for d: Dictionary in parsed.get("decorations", []):
+			result["decorations"][d["id"]] = d
+		for o: Dictionary in parsed.get("obstacles", []):
+			result["obstacles"][o["id"]] = o
+		return result
+
+
+	static func get_item(buildings: Dictionary, decorations: Dictionary, item_id: String) -> Dictionary:
+		if buildings.has(item_id):
+			return buildings[item_id]
+		if decorations.has(item_id):
+			return decorations[item_id]
+		return {}
+
+
+# === 建造数值平衡（原 building_balance.gd）===
+class BuildingBalance:
+	extends RefCounted
+
+	## 建造数值平衡：升级/拆除费用计算、建筑加成汇总。
+	## 常量集中在模块内，避免散落魔法数字；加成与费用口径供 UI 与系统共用。
+	## 设计依据：docs/design/game_design.md 3.7
+
+	const MAX_LEVEL: int = 5
+	const UPGRADE_COST_RATIO: float = 0.75  # 升级费用 = 基础费用 × 比例 × 当前等级
+	const UPGRADE_TIME_RATIO: float = 0.6   # 升级时间 = 建造时间 × 比例 × 当前等级
+	const DEMOLISH_REFUND_RATIO: float = 0.6  # 拆除返还 = 总投入 × 比例
+	const DEMOLISH_TIME_RATIO: float = 0.6    # 拆除时间 = 建造时间 × 比例
+
+
+	static func get_upgrade_cost(item: Dictionary, level: int) -> float:
+		# 升级费用随等级递增：基础费用 × 0.75 × 当前等级
+		return float(item.get("cost", 0.0)) * UPGRADE_COST_RATIO * float(level)
+
+
+	static func get_demolish_refund(item: Dictionary, level: int) -> float:
+		# 返还 =（建造费用 + 全部升级费用）× 60%
+		var total: float = float(item.get("cost", 0.0))
+		for lv: int in range(1, level):
+			total += float(item.get("cost", 0.0)) * UPGRADE_COST_RATIO * float(lv)
+		return total * DEMOLISH_REFUND_RATIO
+
+
+	static func collect_bonuses(placed: Dictionary, item_lookup: Callable) -> Dictionary:
+		# 统计所有已完工建筑/装饰的加成（加成 = 基础 × 等级）
+		var totals: Dictionary = {
+			"gold_rate": 0.0,
+			"pop_max": 0,
+			"pop_growth_rate": 0.0,
+			"tech_rate": 0.0,
+			"culture_rate": 0.0,
+			"happiness": 0,
+		}
+		for key: String in placed:
+			var p: Dictionary = placed[key]
+			var level: int = int(p.get("level", 1))
+			var item: Dictionary = item_lookup.call(p.get("item_id", ""))
+			var bonuses: Dictionary = item.get("bonuses", {})
+			totals["gold_rate"] += float(bonuses.get("gold_rate", 0.0)) * level
+			totals["pop_max"] += int(bonuses.get("pop_max", 0)) * level
+			totals["pop_growth_rate"] += float(bonuses.get("pop_growth_rate", 0.0)) * level
+			totals["tech_rate"] += float(bonuses.get("tech_rate", 0.0)) * level
+			totals["culture_rate"] += float(bonuses.get("culture_rate", 0.0)) * level
+			totals["happiness"] += int(bonuses.get("happiness", 0)) * level
+		return totals
+
+
+# === 网格工具（原 building_grid.gd）===
+class BuildingGrid:
+	extends RefCounted
+
+	## 网格工具：网格初始化、随机障碍生成、占用/释放、锚点与占位查询。
+	## 静态方法，grid/placed 等可变状态以参数传入（Dictionary/Array 引用传递）。
+	## 设计依据：docs/design/game_design.md 3.7
+
+
+	static func init_grid(w: int, h: int) -> Array:
+		# grid[x][y]："" 空 / "occ" 被占用 / "obs:岩石" 障碍
+		var grid: Array = []
+		for x: int in range(w):
+			var column: Array = []
+			for y: int in range(h):
+				column.append("")
+			grid.append(column)
+		return grid
+
+
+	static func generate_obstacles(grid: Array, obstacles_data: Dictionary, grid_w: int, grid_h: int) -> void:
+		# 随机生成岩石/树木/湖泊，点缀地图并创造"清障"玩法
+		var plan: Array = []
+		for i: int in range(randi_range(5, 7)):
+			plan.append("rock")
+		for i: int in range(randi_range(4, 6)):
+			plan.append("tree")
+		for i: int in range(randi_range(1, 2)):
+			plan.append("lake")
+		for obs_id: String in plan:
+			if not obstacles_data.has(obs_id):
+				continue
+			var obs: Dictionary = obstacles_data[obs_id]
+			var cell: Vector2i = find_free_cell(grid, int(obs["width"]), int(obs["height"]), grid_w, grid_h)
+			if cell.x < 0:
+				continue
+			# 锚点格标记为 obs:xxx，其余格标记 occ（占用但不参与清障定位）
+			for dx: int in range(int(obs["width"])):
+				for dy: int in range(int(obs["height"])):
+					var mark: String = "obs:" + obs_id if dx == 0 and dy == 0 else "occ"
+					grid[cell.x + dx][cell.y + dy] = mark
+
+
+	static func find_free_cell(grid: Array, w: int, h: int, grid_w: int, grid_h: int) -> Vector2i:
+		for attempt: int in range(60):
+			var x: int = randi_range(0, grid_w - w)
+			var y: int = randi_range(0, grid_h - h)
+			if cells_free(grid, Vector2i(x, y), w, h):
+				return Vector2i(x, y)
+		return Vector2i(-1, -1)
+
+
+	static func cells_free(grid: Array, cell: Vector2i, w: int, h: int) -> bool:
+		for dx: int in range(w):
+			for dy: int in range(h):
+				if grid[cell.x + dx][cell.y + dy] != "":
+					return false
+		return true
+
+
+	static func occupy_cells(grid: Array, cell: Vector2i, w: int, h: int, mark: String) -> void:
+		for dx: int in range(w):
+			for dy: int in range(h):
+				grid[cell.x + dx][cell.y + dy] = mark
+
+
+	static func release_cells(grid: Array, cell: Vector2i, w: int, h: int) -> void:
+		for dx: int in range(w):
+			for dy: int in range(h):
+				grid[cell.x + dx][cell.y + dy] = ""
+
+
+	static func is_obstacle(grid: Array, obstacles_data: Dictionary, cell: Vector2i, grid_w: int, grid_h: int) -> bool:
+		return find_obstacle_anchor(grid, obstacles_data, cell, grid_w, grid_h).x >= 0
+
+
+	static func get_obstacle_at(grid: Array, obstacles_data: Dictionary, cell: Vector2i, grid_w: int, grid_h: int) -> Dictionary:
+		var anchor: Vector2i = find_obstacle_anchor(grid, obstacles_data, cell, grid_w, grid_h)
+		if anchor.x < 0:
+			return {}
+		var mark: String = str(grid[anchor.x][anchor.y])
+		return obstacles_data.get(mark.substr(4), {})
+
+
+	static func find_obstacle_anchor(grid: Array, obstacles_data: Dictionary, cell: Vector2i, grid_w: int, grid_h: int) -> Vector2i:
+		# 若该格本身是锚点（obs:xxx）直接返回；否则检查它是否属于某个障碍的延伸格
+		if cell.x < 0 or cell.y < 0:
+			return Vector2i(-1, -1)
+		var mark: String = str(grid[cell.x][cell.y])
+		if mark.begins_with("obs:"):
+			return cell
+		if mark != "occ":
+			return Vector2i(-1, -1)
+		for x: int in range(maxi(0, cell.x - 2), mini(cell.x + 3, grid_w)):
+			for y: int in range(maxi(0, cell.y - 2), mini(cell.y + 3, grid_h)):
+				var m: String = str(grid[x][y])
+				if m.begins_with("obs:"):
+					var obs: Dictionary = obstacles_data.get(m.substr(4), {})
+					var w: int = int(obs.get("width", 1))
+					var h: int = int(obs.get("height", 1))
+					if cell.x >= x and cell.x < x + w and cell.y >= y and cell.y < y + h:
+						return Vector2i(x, y)
+		return Vector2i(-1, -1)
+
+
+	static func get_placed_key(placed: Dictionary, cell: Vector2i) -> String:
+		# 返回包含该格子的建筑锚点 key（"x,y"），用于取消建造等操作
+		for key: String in placed:
+			var p: Dictionary = placed[key]
+			var anchor: Vector2i = key_to_cell(key)
+			if cell.x >= anchor.x and cell.x < anchor.x + int(p["width"]) and cell.y >= anchor.y and cell.y < anchor.y + int(p["height"]):
+				return key
+		return ""
+
+
+	static func key_to_cell(key: String) -> Vector2i:
+		var parts: PackedStringArray = key.split(",")
+		return Vector2i(int(parts[0]), int(parts[1]))
+
+
+# === 建筑操作（原 building_actions.gd）===
+class BuildingActions:
+	extends RefCounted
+
+	## 建筑操作：放置/取消建造/升级/拆除/清除障碍。
+	## 作为 BuildingSystem 的协作者，通过 system 引用访问状态（grid/placed）与信号，
+	## 使 Autoload 保持职责单一（状态 + 计时 + 委托）。
+
+	var system: Node  # BuildingSystem 实例（动态访问其 grid/placed/信号）
+
+
+	func _init(building_system: Node) -> void:
+		system = building_system
+
+
+	## 放置建筑：选中建筑 → 点击网格放置，消费金币
+	func place_item(cell: Vector2i, item_id: String) -> bool:
+		var item: Dictionary = system.get_item(item_id)
+		if item.is_empty() or cell.x < 0 or cell.y < 0:
+			return false
+		var w: int = int(item.get("width", 1))
+		var h: int = int(item.get("height", 1))
+		if cell.x + w > system.GRID_W or cell.y + h > system.GRID_H:
+			return false
+		if not BuildingGrid.cells_free(system.grid, cell, w, h):
+			return false
+		if GameState.gold < float(item.get("cost", 0.0)):
+			return false
+		GameState.add_gold(-float(item.get("cost", 0.0)))
+		BuildingGrid.occupy_cells(system.grid, cell, w, h, "occ")
+		var key: String = "%d,%d" % [cell.x, cell.y]
+		system.placed[key] = {
+			"item_id": item_id,
+			"width": w,
+			"height": h,
+			"remaining": float(item.get("build_time", 0.0)),
+			"total": float(item.get("build_time", 0.0)),
+			"completed": false,
+			"level": 1,
+			"op": "build",
+		}
+		system.building_placed.emit(cell, item_id)
+		return true
+
+
+	## 取消建造：仅建造中可取消，释放格子并退还金币
+	func cancel_construction(cell: Vector2i) -> bool:
+		var key: String = system.get_placed_key(cell)
+		if key.is_empty():
+			return false
+		var p: Dictionary = system.placed[key]
+		if p["op"] != "build":
+			return false
+		var item: Dictionary = system.get_item(p["item_id"])
+		var anchor: Vector2i = BuildingGrid.key_to_cell(key)
+		system.placed.erase(key)
+		BuildingGrid.release_cells(system.grid, anchor, int(p["width"]), int(p["height"]))
+		GameState.add_gold(float(item.get("cost", 0.0)))
+		system.construction_cancelled.emit(anchor, p["item_id"])
+		system.grid_changed.emit(anchor)
+		return true
+
+
+	## 升级建筑：消耗金币与时间，等级+1，加成 = 基础 × 等级
+	func upgrade_building(cell: Vector2i) -> bool:
+		var key: String = system.get_placed_key(cell)
+		if key.is_empty():
+			return false
+		var p: Dictionary = system.placed[key]
+		if p["op"] != "" or int(p["level"]) >= BuildingBalance.MAX_LEVEL:
+			return false
+		var cost: float = system.get_upgrade_cost(p)
+		if GameState.gold < cost:
+			return false
+		GameState.add_gold(-cost)
+		var item: Dictionary = system.get_item(p["item_id"])
+		p["remaining"] = float(item.get("build_time", 0.0)) * BuildingBalance.UPGRADE_TIME_RATIO * float(p["level"])
+		p["total"] = p["remaining"]
+		p["op"] = "upgrade"
+		system.grid_changed.emit(cell)
+		return true
+
+
+	## 拆除建筑：需时间，完成后返还建造+升级总费用的一部分
+	func start_demolish(cell: Vector2i) -> bool:
+		var key: String = system.get_placed_key(cell)
+		if key.is_empty():
+			return false
+		var p: Dictionary = system.placed[key]
+		if p["op"] != "":
+			return false
+		var item: Dictionary = system.get_item(p["item_id"])
+		p["remaining"] = float(item.get("build_time", 0.0)) * BuildingBalance.DEMOLISH_TIME_RATIO
+		p["total"] = p["remaining"]
+		p["op"] = "demolish"
+		system.grid_changed.emit(cell)
+		return true
+
+
+	## 清除障碍：花费金币解锁可建造区域（自动定位锚点，大障碍点击任意格均可清除）
+	func clear_obstacle(cell: Vector2i) -> bool:
+		var anchor: Vector2i = system.get_obstacle_anchor(cell)
+		var obs: Dictionary = system.get_obstacle_at(anchor)
+		if obs.is_empty():
+			return false
+		if GameState.gold < float(obs.get("clear_cost", 0.0)):
+			return false
+		GameState.add_gold(-float(obs.get("clear_cost", 0.0)))
+		BuildingGrid.release_cells(system.grid, anchor, int(obs.get("width", 1)), int(obs.get("height", 1)))
+		system.obstacle_cleared.emit(anchor)
+		system.grid_changed.emit(anchor)
+		return true
+
+
+
+
+
+
+

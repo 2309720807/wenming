@@ -98,7 +98,7 @@
   - 拆除返还 =（建造费 + 累计升级费）× 60%，拆除时间 = 建造时间 × 0.6
     - 施工进度条颜色：建造绿 / 升级黄 / 拆除红（拆除中建筑闪烁）
     - 建筑右上角显示等级徽章（Lv.x）
-  - **建筑产出总览面板（已实现）**：地图界面底部实时显示所有已建建筑/装饰的累计加成（金币/人口上限/人口增长率/科技/文化/幸福度），监听 `BuildingSystem.bonus_updated` 自动刷新；面板设 `mouse_filter=IGNORE` 不阻挡网格建造点击。实现于 `scripts/ui/map_summary.gd`（独立面板脚本），由 `explore_map.gd` 挂载。
+  - **建筑产出总览面板（已实现）**：地图界面底部实时显示所有已建建筑/装饰的累计加成（金币/人口上限/人口增长率/科技/文化/幸福度），监听 `BuildingSystem.bonus_updated` 自动刷新；面板设 `mouse_filter=IGNORE` 不阻挡网格建造点击。实现于 `scripts/ui/explore_map.gd` 内部类 MapSummary（原独立脚本已合并，见 AGENTS.md 3.1）。
 
 **建筑类型与数值**（配置于 `data/buildings.json`）：
 
@@ -130,16 +130,14 @@
   - 时间控制：倍速 1x/2x/3x/5x/10x、暂停/继续
   - 数值调试：GameState 全部公开数值（资源/速率/人口/幸福度/科技/文化点数）+/- 实时调节
   - 资产浏览：建筑/装饰/障碍物/礼包码实时列出（从数据源读取，新增条目自动出现）
-  - 实现：`scripts/ui/debug_console.gd`（框架）+ `debug_stats_panel.gd`（数值）+ `debug_assets_view.gd`（资产），规则见 AGENTS.md 3.2
+  - 实现：`scripts/ui/debug_console.gd`（框架，数值/资产/离线/存档分组为同文件内部类 DebugStatsPanel/DebugAssetsView/DebugOfflinePanel/DebugSavePanel），规则见 AGENTS.md 3.2
 
 **模块划分**：
 - `data/gift_codes.json` — 礼包码数据配置（数据驱动）
 - `scripts/data/gift_code_manager.gd` — 礼包码管理器 Autoload：加载配置、校验、发奖（GameState.add_gold）、防重复兑换、调试码特判
 - `scripts/ui/settings_menu.gd` — 设置面板 UI：分辨率下拉、礼包码输入、退出确认，仅调用 WindowManager/GiftCodeManager，不含业务逻辑
 - `scenes/ui/settings_menu.tscn` — 设置面板场景（居中弹窗，实例化于主界面）
-- `scripts/ui/debug_console.gd` — 开发者调试台框架（挂载于主界面）
-- `scripts/ui/debug_stats_panel.gd` — 调试台数值调试面板
-- `scripts/ui/debug_assets_view.gd` — 调试台资产数据浏览面板
+- `scripts/ui/debug_console.gd` — 开发者调试台框架（挂载于主界面）；数值调试/资产浏览/离线模拟/存档管理分组均为同文件内部类（DebugStatsPanel/DebugAssetsView/DebugOfflinePanel/DebugSavePanel，原独立文件已合并，见 AGENTS.md 3.1）
 
 **UI 动效（界面打磨）**：
 - `scripts/ui/ui_anim.gd` — 通用动效工具（UiAnim）：按钮悬停放大/按下微缩、面板入场淡入+放大、数值变化闪烁
@@ -160,7 +158,7 @@
 - **模块划分**：
   - `scripts/data/save_manager.gd` — 存档管理 Autoload（SaveManager）：序列化/反序列化/列表/删除
   - `scripts/ui/save_list.gd` — 存档列表组件（SaveList）：显示/进入/删除，登录与调试台共用
-  - `scripts/ui/debug_save_panel.gd` — 调试台存档管理分组（DebugSavePanel）
+  - `scripts/ui/debug_console.gd` 内部类 DebugSavePanel — 调试台存档管理分组
   - `GameState.restore_state()` / `BuildingSystem.restore_state()` — 状态恢复接口
 
 ### 3.10 离线挂机系统（已实现）
@@ -175,7 +173,7 @@
 - **模块划分**：
   - `scripts/data/offline_gains.gd` — 离线结算核心（OfflineGains，静态工具）：`apply_offline(seconds)` 返回收益报告
   - `scripts/data/save_manager.gd` — 时间戳记录、启动结算、退出保存（SaveManager）
-  - `scripts/ui/debug_offline_panel.gd` — 调试台离线模拟分组（DebugOfflinePanel）
+  - `scripts/ui/debug_console.gd` 内部类 DebugOfflinePanel — 调试台离线模拟分组
 
 ## 4. 界面UI布局
 
@@ -250,21 +248,13 @@ res://
 └── docs/design/       设计文档
 ```
 
-**建造系统模块划分**（遵循模块化规则，每文件 ≤200 行）：
+**建造系统模块划分**（同系统小模块已合并为内部类，避免文件碎片化，见 AGENTS.md 3.1）：
 
 - `data/buildings.json` — 建筑/装饰/障碍物/网格尺寸数据配置（数据驱动，网格尺寸以 JSON 为准）
-- `scripts/game/building_system.gd` — 建造系统 Autoload（薄壳）：信号、状态、施工计时（随倍速）、加成写回，操作委托各模块
-- `scripts/game/building_data.gd` — 建造数据加载与查询（BuildingData）
-- `scripts/game/building_grid.gd` — 网格工具：初始化、随机障碍、占用/释放、锚点定位（BuildingGrid）
-- `scripts/game/building_balance.gd` — 数值平衡：升级/拆除费用、加成汇总（BuildingBalance）
-- `scripts/game/building_actions.gd` — 建筑操作：放置/取消/升级/拆除/清障（BuildingActions）
-- `scripts/ui/explore_map.gd` — 地图网格 UI：菜单选择、悬停、点击处理
+- `scripts/game/building_system.gd` — 建造系统 Autoload：信号、状态、施工计时（随倍速）、加成写回；内部类 BuildingData（建造数据加载与查询）、BuildingGrid（网格工具：初始化、随机障碍、占用/释放、锚点定位）、BuildingBalance（数值平衡：升级/拆除费用、加成汇总）、BuildingActions（建筑操作：放置/取消/升级/拆除/清障），外部经 `BuildingSystem.内部类名` 访问
+- `scripts/ui/explore_map.gd` — 地图网格 UI：菜单选择、悬停、点击处理；内部类 BuildingActionPanel（操作面板控制器）、BuildingInfo（悬停/点击信息文案）、BuildingFeedback（建造反馈）、MapSummary（建筑产出总览面板）
 - `scripts/ui/grid_view.gd` — 网格绘制：网格/障碍/建筑/预览渲染与输入（GridView）
 - `scripts/ui/building_menu.gd` — 左侧建筑菜单栏：分类、滚动、选中状态
-- `scripts/ui/building_action_panel.gd` — 操作面板控制器：等级/升级费用/拆除返还显示（BuildingActionPanel）
-- `scripts/ui/building_info.gd` — 悬停/点击信息文案生成（BuildingInfo）
-- `scripts/ui/building_feedback.gd` — 建造反馈：完工/升级/拆除动画与提示（BuildingFeedback）
-- `scripts/ui/map_summary.gd` — 建筑产出总览面板（MapSummary）
 - `scripts/data/window_manager.gd` — 窗口管理 Autoload：根 Control 等比缩放（scale=min(宽/1280,高/720)，矢量重绘）、分辨率切换、窗口居中
 - `scenes/ui/explore/` — 地图与探索界面场景
 
@@ -301,7 +291,7 @@ res://
 - [x] **地图与探索：网格建设系统**（部落冲突式网格建造、左侧建筑菜单栏、建筑/装饰/障碍物、建造时间动画、加成接入月度增长、**建筑升级与拆除**、**科技/文化点数化**）
 - [x] **窗口等比例缩放**（关闭 stretch，根 Control 矢量等比缩放：任意分辨率清晰、布局坐标系恒定不错位）
 - [x] **设置系统**（底栏设置按钮：分辨率切换、礼包码兑换、退出游戏）
-- [x] **地图界面增强：建筑产出总览面板**（实时汇总建筑加成，scripts/ui/map_summary.gd）
+- [x] **地图界面增强：建筑产出总览面板**（实时汇总建筑加成，explore_map.gd 内部类 MapSummary）
 - [x] **开发者调试台**（礼包码 tiaoshitai：倍速/数值/资产浏览，AGENTS.md 3.2）
 - [x] **UI 美化与动效**（玻璃质感视觉统一、按钮悬停/按下动画、面板入场、数值闪烁）
 - [x] **本地存档系统**（user://saves/ 按角色保存，登录首页加载/删除，调试台保存）

@@ -48,7 +48,7 @@ func _settle_offline_gains() -> void:
 	# 防御异常存档：网格全空且无建筑（如旧版本/测试残留）时重新生成开局障碍，
 	# 避免把随机树/石头/湖泊等阻挡物覆盖掉
 	if _grid_all_empty(BuildingSystem.grid) and BuildingSystem.placed.is_empty():
-		BuildingGrid.generate_obstacles(BuildingSystem.grid, BuildingSystem.obstacles_data,
+		BuildingSystem.BuildingGrid.generate_obstacles(BuildingSystem.grid, BuildingSystem.obstacles_data,
 				BuildingSystem.GRID_W, BuildingSystem.GRID_H)
 	last_offline_gains = OfflineGains.apply_offline(elapsed)
 	save_game(AUTOSAVE_ROLE)

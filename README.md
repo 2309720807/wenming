@@ -51,7 +51,7 @@
   - 随机障碍（岩石/树木/湖泊）可花费金币清除；点击施工中建筑可取消建造并返还金币
   - **建筑升级与拆除**：点击已完工建筑弹出操作面板；升级费用随等级递增（最高 5 级）、加成 = 基础 × 等级；拆除返还总投入 60%；进度条颜色区分（建绿/升黄/拆红）；施工进度随游戏倍速加速（暂停时冻结）
   - 建筑加成（金币/人口/幸福度/科技/文化）实时接入月度增长循环，顶部信息栏同步刷新
-  - **建筑产出总览面板**（`scripts/ui/map_summary.gd`）：界面底部实时汇总所有已建建筑/装饰的累计加成（金币/人口上限/人口增长率/科技/文化/幸福度），监听 `BuildingSystem.bonus_updated` 自动刷新，鼠标穿透不阻挡建造
+  - **建筑产出总览面板**：界面底部实时汇总所有已建建筑/装饰的累计加成（金币/人口上限/人口增长率/科技/文化/幸福度），监听 `BuildingSystem.bonus_updated` 自动刷新，鼠标穿透不阻挡建造（实现于 `explore_map.gd` 内部类 MapSummary）
   - **科技/文化为点数制**：基础速率 0.5/0.4 点/月，累积不封顶
 
 - **设置系统**（`scenes/ui/settings_menu.tscn` + `scripts/ui/settings_menu.gd`）：
@@ -92,8 +92,8 @@
 | `scenes/game/` | 游戏世界场景 |
 | `scripts/` | GDScript 脚本（外部 `.gd`，不在场景内嵌逻辑） |
 | `scripts/data/` | 数据层：GameState（游戏状态）、TimeManager（时间管理）等 Autoload 单例 |
-| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd、message_log.gd、top_bar.gd、explore_map.gd、grid_view.gd、building_menu.gd、building_action_panel.gd、building_info.gd、building_feedback.gd、settings_menu.gd、map_summary.gd、debug_console.gd、debug_stats_panel.gd、debug_assets_view.gd、ui_anim.gd 等） |
-| `scripts/game/` | 游戏逻辑层：建造系统（building_system.gd 薄壳 + building_data/grid/balance/actions 模块） |
+| `scripts/ui/` | UI 层：各界面逻辑脚本（main_ui.gd、login.gd、message_log.gd、top_bar.gd、explore_map.gd、grid_view.gd、building_menu.gd、settings_menu.gd、debug_console.gd、save_list.gd、ui_anim.gd 等；界面专属小模块已合并为内部类，见 AGENTS.md 3.1） |
+| `scripts/game/` | 游戏逻辑层：建造系统（building_system.gd，同系统小模块以内部类组织：BuildingData/BuildingGrid/BuildingBalance/BuildingActions） |
 | `scenes/ui/explore/` | 地图与探索界面场景（网格建设） |
 | `assets/` | 美术 / 音频 / 字体资源 |
 | `data/` | 数据文件（JSON 等） |
@@ -107,7 +107,7 @@
 | GameState | `scripts/data/game_state.gd` | 游戏状态管理：玩家数据（昵称）、资源数据、进度数据、信号通知、存档恢复 |
 | TimeManager | `scripts/data/time_manager.gd` | 时间管理：游戏时间、倍率控制、月度更新 |
 | SaveManager | `scripts/data/save_manager.gd` | 存档管理：user://saves/ 本地 JSON 存档（保存/加载/列表/删除），按角色名区分 |
-| BuildingSystem | `scripts/game/building_system.gd` | 建造系统 Autoload（薄壳）：网格状态、放置/取消/清障、建造/升级/拆除计时（随倍速）、加成重算；逻辑拆分于 building_data/building_grid/building_balance/building_actions |
+| BuildingSystem | `scripts/game/building_system.gd` | 建造系统 Autoload：网格状态、放置/取消/清障、建造/升级/拆除计时（随倍速）、加成重算；内部类 BuildingData（数据加载）/BuildingGrid（网格工具）/BuildingBalance（数值平衡）/BuildingActions（建筑操作），外部经 `BuildingSystem.内部类名` 访问 |
 | WindowManager | `scripts/data/window_manager.gd` | 窗口管理：根 Control 等比缩放（矢量重绘，任意分辨率清晰不错位）、分辨率切换（`set_resolution`）、窗口居中、`setup_scale_root` 注册场景根 |
 | GiftCodeManager | `scripts/data/gift_code_manager.gd` | 礼包码管理：加载 `data/gift_codes.json`、校验兑换、发放金币奖励、防重复兑换 |
 

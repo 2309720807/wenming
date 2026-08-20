@@ -79,7 +79,7 @@ static func _advance_construction(duration: float) -> void:
 static func _finish_job(key: String) -> void:
 	# 与 BuildingSystem._process_finished 同口径（跨类调用私有加成重算，属数据层协作）
 	var p: Dictionary = BuildingSystem.placed[key]
-	var cell: Vector2i = BuildingGrid.key_to_cell(key)
+	var cell: Vector2i = BuildingSystem.BuildingGrid.key_to_cell(key)
 	var item_id: String = p["item_id"]
 	match p["op"]:
 		"build":
@@ -94,9 +94,9 @@ static func _finish_job(key: String) -> void:
 			BuildingSystem.building_upgraded.emit(cell, item_id, p["level"])
 		"demolish":
 			var refund: float = BuildingSystem.get_demolish_refund(p)
-			var anchor: Vector2i = BuildingGrid.key_to_cell(key)
+			var anchor: Vector2i = BuildingSystem.BuildingGrid.key_to_cell(key)
 			BuildingSystem.placed.erase(key)
-			BuildingGrid.release_cells(BuildingSystem.grid, anchor, int(p["width"]), int(p["height"]))
+			BuildingSystem.BuildingGrid.release_cells(BuildingSystem.grid, anchor, int(p["width"]), int(p["height"]))
 			GameState.add_gold(refund)
 			BuildingSystem._recalculate_bonuses()
 			BuildingSystem.grid_changed.emit(anchor)
