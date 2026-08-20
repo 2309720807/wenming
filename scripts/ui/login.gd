@@ -10,6 +10,7 @@ extends Control
 @onready var panel_vbox: VBoxContainer = $CenterContainer/Panel/VBox
 
 var player_name: String = ""
+var _pending_name: String = ""  # 同名覆盖确认中的角色名
 
 
 func _ready() -> void:
@@ -64,6 +65,30 @@ func _on_start_pressed(_text: String = "") -> void:
 	if name_value.is_empty():
 		_show_error("请输入玩家昵称")
 		return
+	# 同名角色防护：已有同名存档时先确认，避免误覆盖原角色进度
+	for s: Dictionary in SaveManager.list_saves():
+		if s.get("player_name", "") == name_value:
+			_pending_name = name_value
+			_show_overwrite_confirm(name_value)
+			return
+	_start_new_game(name_value)
+
+
+func _show_overwrite_confirm(role: String) -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "角色已存在"
+	dialog.dialog_text = "角色「%s」已有存档，继续将覆盖其存档。确定新建/覆盖吗？" % role
+	dialog.ok_button_text = "覆盖"
+	dialog.cancel_button_text = "取消"
+	dialog.confirmed.connect(func() -> void: _start_new_game(_pending_name))
+	dialog.close_requested.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.confirmed.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered()
+
+
+func _start_new_game(name_value: String) -> void:
 	player_name = name_value
 	# 新建游戏 = 全新开局：重置数据/建造/时间状态，避免继承自动存档（修复：不同存档进入后内容相同）
 	GameState.reset_state()

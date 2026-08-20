@@ -8,6 +8,7 @@ const SAVE_DIR: String = "user://saves/"
 const AUTOSAVE_INTERVAL: float = 10.0  # 自动保存间隔（秒）
 const AUTOSAVE_ROLE: String = "自动存档"
 const LAST_SEEN_PATH: String = "user://saves/.last_seen"  # 上次结算时间戳
+const LAST_ROLE_PATH: String = "user://saves/.last_role"  # 上次游玩角色（离线结算按角色加载）
 
 var _autosave_timer: Timer
 var last_offline_gains: Dictionary = {}  # 最近一次离线挂机结算 {"seconds", "months", "gold"}
@@ -15,6 +16,7 @@ var last_offline_gains: Dictionary = {}  # 最近一次离线挂机结算 {"seco
 
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+	_migrate_legacy_autosave()
 	_autosave_timer = Timer.new()
 	_autosave_timer.wait_time = AUTOSAVE_INTERVAL
 	_autosave_timer.timeout.connect(_on_autosave)
@@ -29,7 +31,10 @@ func _exit_tree() -> void:
 	var scene: Node = get_tree().current_scene
 	if scene == null:
 		return
-	save_game(AUTOSAVE_ROLE)
+	var role: String = current_role()
+	if role.is_empty():
+		return
+	save_game(role)
 	_write_last_seen()
 
 
@@ -40,9 +45,10 @@ func _settle_offline_gains() -> void:
 	if last <= 0.0:
 		return
 	var elapsed: float = float(Time.get_unix_time_from_system()) - last
-	if elapsed <= 0.0 or not FileAccess.file_exists(SAVE_DIR + AUTOSAVE_ROLE + ".json"):
+	var role: String = _read_last_role()
+	if elapsed <= 0.0 or role.is_empty() or not FileAccess.file_exists(SAVE_DIR + role + ".json"):
 		return
-	var loaded: Dictionary = load_game(AUTOSAVE_ROLE + ".json")
+	var loaded: Dictionary = load_game(role + ".json")
 	if not loaded["ok"]:
 		return
 	# 防御异常存档：网格全空且无建筑（如旧版本/测试残留）时重新生成开局障碍，
@@ -53,7 +59,7 @@ func _settle_offline_gains() -> void:
 	last_offline_gains = OfflineGains.apply_offline(elapsed)
 	# 离线结算推进了年月，重新对齐 TimeManager 时间，防止 _process 把时间覆盖回去
 	TimeManager.sync_to_save(GameState.year, GameState.month)
-	save_game(AUTOSAVE_ROLE)
+	save_game(role)
 	_write_last_seen()
 	print("离线挂机结算：%.1f 秒（%.1f 月），金币 +%d" % [
 		elapsed, last_offline_gains.get("months", 0.0), int(last_offline_gains.get("gold", 0)),
@@ -85,7 +91,10 @@ func _on_autosave() -> void:
 	var scene: Node = get_tree().current_scene
 	if scene == null or scene.name != "MainUI":
 		return
-	save_game(AUTOSAVE_ROLE)
+	var role: String = current_role()
+	if role.is_empty():
+		return
+	save_game(role)
 	_write_last_seen()  # 同步结算点，崩溃时最多损失一个自动保存间隔
 
 
@@ -101,6 +110,7 @@ func save_game(role_name: String) -> Dictionary:
 	if file == null:
 		return {"ok": false, "file_name": file_name, "message": "存档写入失败"}
 	file.store_string(JSON.stringify(_collect_state()))
+	_write_last_role(name_clean)  # 保存即视为当前角色：离线结算按该角色加载
 	return {"ok": true, "file_name": file_name, "message": "已保存存档：%s" % name_clean}
 
 
@@ -145,6 +155,7 @@ func load_game(file_name: String) -> Dictionary:
 		parsed.get("grid", []), parsed.get("placed", {}), parsed.get("base_stats", {}))
 	# 同步游戏时间：避免 TimeManager 用"本次启动运行时长"覆盖存档年月（修复：不同存档进入后时间被抹平）
 	TimeManager.sync_to_save(GameState.year, GameState.month)
+	_write_last_role(GameState.player_name.strip_edges())
 	return {"ok": true, "message": "已加载存档：%s" % file_name.trim_suffix(".json")}
 
 
@@ -187,3 +198,40 @@ func delete_save(file_name: String) -> bool:
 	if not FileAccess.file_exists(path):
 		return false
 	return DirAccess.remove_absolute(path) == OK
+
+
+func current_role() -> String:
+	## 当前角色名（存档文件名 = 角色名.json，各角色独立存档互不覆盖）
+	return GameState.player_name.strip_edges()
+
+
+## 一次性迁移：旧版固定"自动存档"槽 → 按角色名独立存档（修复：新建角色覆盖原角色）
+func _migrate_legacy_autosave() -> void:
+	var legacy: String = SAVE_DIR + AUTOSAVE_ROLE + ".json"
+	if not FileAccess.file_exists(legacy):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(legacy))
+	if parsed is not Dictionary:
+		return
+	var role: String = str(parsed.get("player_name", "")).strip_edges()
+	if role.is_empty():
+		return
+	var target: String = SAVE_DIR + role + ".json"
+	if FileAccess.file_exists(target):
+		DirAccess.remove_absolute(legacy)  # 已有同名角色存档，旧槽冗余删除
+	else:
+		DirAccess.rename_absolute(legacy, target)
+	_write_last_role(role)  # 迁移角色作为离线结算默认角色
+	print("迁移旧自动存档 -> %s.json" % role)
+
+
+func _read_last_role() -> String:
+	if not FileAccess.file_exists(LAST_ROLE_PATH):
+		return ""
+	return FileAccess.get_file_as_string(LAST_ROLE_PATH).strip_edges()
+
+
+func _write_last_role(role: String) -> void:
+	var f := FileAccess.open(LAST_ROLE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(role)

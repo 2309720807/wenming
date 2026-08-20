@@ -7,6 +7,7 @@ class_name SettingsMenu
 
 signal redeem_succeeded(message: String)
 signal debug_requested  # 开发者调试台开启请求（礼包码 tiaoshitai，见 AGENTS.md 3.2）
+signal role_switched(message: String)  # 切换角色完成（主界面消息日志提示）
 
 @onready var resolution_option: OptionButton = %ResolutionOption
 @onready var gift_code_input: LineEdit = %GiftCodeInput
@@ -15,6 +16,12 @@ signal debug_requested  # 开发者调试台开启请求（礼包码 tiaoshitai�
 @onready var btn_exit: Button = %BtnExit
 @onready var btn_close: Button = %BtnClose
 @onready var confirm_dialog: ConfirmationDialog = %ConfirmDialog
+@onready var btn_save: Button = %BtnSave
+@onready var btn_switch_role: Button = %BtnSwitchRole
+@onready var save_result_label: Label = %SaveResultLabel
+@onready var role_list_box: VBoxContainer = %RoleListBox
+
+var _save_list: SaveList
 
 
 func _ready() -> void:
@@ -26,6 +33,14 @@ func _ready() -> void:
 	btn_exit.pressed.connect(_on_exit_pressed)
 	btn_close.pressed.connect(close)
 	confirm_dialog.confirmed.connect(_on_confirm_exit)
+	btn_save.pressed.connect(_on_save_pressed)
+	btn_switch_role.pressed.connect(_on_switch_role_pressed)
+	# 切换角色列表（复用 SaveList 组件：进入/删除/刷新）
+	_save_list = SaveList.new()
+	_save_list.name = "SaveList"
+	_save_list.save_loaded.connect(_on_role_loaded)
+	_save_list.save_deleted.connect(func(_f: String) -> void: save_result_label.text = "存档已删除")
+	role_list_box.add_child(_save_list)
 
 
 func open() -> void:
@@ -78,3 +93,35 @@ func _on_exit_pressed() -> void:
 
 func _on_confirm_exit() -> void:
 	get_tree().quit()
+
+
+# === 存档管理（保存进度 / 切换角色）===
+
+func _on_save_pressed() -> void:
+	## 保存当前进度到当前角色（角色名 = 登录昵称，各角色独立存档）
+	var role: String = GameState.player_name.strip_edges()
+	if role.is_empty():
+		save_result_label.text = "当前没有角色，无法保存"
+		save_result_label.modulate = Color(1, 0.6, 0.5, 1)
+		return
+	var result: Dictionary = SaveManager.save_game(role)
+	save_result_label.text = result["message"]
+	save_result_label.modulate = Color(0.55, 1, 0.6, 1) if result["ok"] else Color(1, 0.6, 0.5, 1)
+
+
+func _on_switch_role_pressed() -> void:
+	## 展开/收起角色列表；展开时刷新存档条目
+	role_list_box.visible = not role_list_box.visible
+	if role_list_box.visible:
+		save_result_label.text = ""
+		_save_list.refresh()
+
+
+func _on_role_loaded(file_name: String) -> void:
+	## 切换角色：加载目标角色存档，数据层信号自动刷新主界面，随后关闭设置面板
+	var result: Dictionary = SaveManager.load_game(file_name)
+	save_result_label.text = result["message"]
+	save_result_label.modulate = Color(0.55, 1, 0.6, 1) if result["ok"] else Color(1, 0.6, 0.5, 1)
+	if result["ok"]:
+		role_switched.emit(result["message"])
+		close()

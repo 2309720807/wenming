@@ -76,6 +76,7 @@ func _connect_signals() -> void:
 	btn_settings.pressed.connect(_on_settings_pressed)
 	settings_menu.redeem_succeeded.connect(message_log.add_message)
 	settings_menu.debug_requested.connect(_on_debug_requested)
+	settings_menu.role_switched.connect(_on_role_switched)
 
 	# TimeManager 信号
 	TimeManager.speed_changed.connect(_on_speed_changed)
@@ -159,6 +160,11 @@ func _on_debug_requested() -> void:
 	settings_menu.close()
 	debug_console.open()
 	message_log.add_message("开发者调试台已开启")
+
+
+func _on_role_switched(message: String) -> void:
+	## 设置面板切换角色完成：数据层信号已刷新顶栏/地图，这里仅提示
+	message_log.add_message(message)
 
 
 func _update_speed_buttons(active_speed: int) -> void:
