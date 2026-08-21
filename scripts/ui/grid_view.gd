@@ -55,15 +55,15 @@ var _moon_disc: MeshInstance3D  # 月亮圆盘（冷色光球，跟随月光方�
 const DAY_LENGTH: float = 90.0          # 现实 90 秒 = 游戏一昼夜（随 GameState 游戏时间流逝）
 const SUN_MAX_ELEV: float = 0.62        # 太阳最高仰角（sin 弧度 ≈ 35.5°）
 const MOON_MAX_ELEV: float = 0.55       # 月亮最高仰角
-const DISC_DIST: float = 1600.0       # 太阳/月亮圆盘距地图中心距离（视差定位）
-const SUN_DISC_R: float = 52.0        # 太阳圆盘半径
-const MOON_DISC_R: float = 40.0       # 月亮圆盘半径
+const DISC_DIST: float = 2400.0       # 太阳/月亮圆盘沿相机前方距离（视差定位，保证视锥内）
+const SUN_DISC_R: float = 68.0        # 太阳圆盘半径
+const MOON_DISC_R: float = 52.0       # 月亮圆盘半径
 const SUN_WARM: Color = Color(1.0, 0.92, 0.78)    # 黄昏暖橙
 const SUN_NOON: Color = Color(1.0, 0.98, 0.92)    # 正午暖白
 const MOON_COLOR: Color = Color(0.62, 0.72, 1.0)  # 月亮冷蓝白
 const NIGHT_SKY: Color = Color(0.008, 0.015, 0.045)  # 深夜天空
-const DUSK_SKY: Color = Color(0.45, 0.28, 0.2)     # 黄昏橙红天空
-const DAY_SKY: Color = Color(0.02, 0.05, 0.12)     # 白昼深蓝天空
+const DUSK_SKY: Color = Color(0.75, 0.45, 0.28)     # 黄昏橙红天空（明亮）
+const DAY_SKY: Color = Color(0.34, 0.5, 0.75)       # 白昼亮蓝天（修复：原深蓝近黑致天空灰暗）
 
 # === 摄像机状态 ===
 var _cam_dist: float = CAM_DIST_BASE
@@ -521,7 +521,7 @@ func _make_celestial_disc(radius: float, glow: Color) -> MeshInstance3D:
 	mat.albedo_color = glow
 	mat.emission_enabled = true
 	mat.emission = glow
-	mat.emission_energy_multiplier = 2.0
+	mat.emission_energy_multiplier = 3.0
 	mat.disable_receive_shadows = true
 	disc.material_override = mat
 	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -529,7 +529,7 @@ func _make_celestial_disc(radius: float, glow: Color) -> MeshInstance3D:
 	return disc
 
 
-## 每帧定位天体：沿光背向（+Z = 天空方向）把圆盘推到远处（太阳月亮挂在天上）
+## 每帧定位天体：相对相机放置（保证在相机视锥内可见；太阳月亮始终挂在天上）
 func _update_celestial_disc(light: DirectionalLight3D, disc: MeshInstance3D, up: bool, dist: float) -> void:
 	if disc == null:
 		return
@@ -537,9 +537,11 @@ func _update_celestial_disc(light: DirectionalLight3D, disc: MeshInstance3D, up:
 	if not up:
 		return
 	# DirectionalLight3D 朝 -Z 照射；+basis.z 即"光源所在"的天空方向
-	# 修复：原用 -basis.z（照射方向）把圆盘放到了地下，永远不可见
 	var sky_dir: Vector3 = light.global_transform.basis.z.normalized()
-	disc.position = _cam_target + sky_dir * dist
+	# 相机视线前方 dist + 天向偏移：俯视地面时太阳也在视锥内（修复：原相对场景中心，
+	# 正午太阳在头顶上方，被俯视相机排除在视野外）
+	var cam_fwd: Vector3 = -_camera.global_transform.basis.z.normalized()
+	disc.position = _camera.global_position + cam_fwd * dist + sky_dir * (dist * 0.35)
 
 
 ## 昼夜光影：太阳/月亮按游戏时间东升西落（方位 360° + 仰角正弦曲线）
@@ -585,11 +587,11 @@ func _update_day_night(_delta: float) -> void:
 	if sun_up:
 		var dayness: float = sin(sun_phase * PI)
 		sky_col = DAY_SKY.lerp(DUSK_SKY, 1.0 - dayness)
-		ambient = 0.35 + 0.35 * dayness
+		ambient = 0.5 + 0.45 * dayness  # 白昼环境光提亮（修复灰暗）
 	else:
 		# 黄昏(DUSK) → 深夜(NIGHT) → 黎明(DUSK)：nightness 0→1→0 平滑过渡
 		sky_col = DUSK_SKY.lerp(NIGHT_SKY, nightness)
-		ambient = 0.35 - 0.22 * nightness  # 黄昏 0.35 → 深夜 0.13
+		ambient = 0.45 - 0.3 * nightness  # 黄昏 0.45 → 深夜 0.15
 	_sky.environment.background_color = sky_col
 	_sky.environment.ambient_light_color = sky_col.lightened(0.25)
 	_sky.environment.ambient_light_energy = ambient
