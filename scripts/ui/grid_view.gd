@@ -491,7 +491,8 @@ func _update_camera() -> void:
 func _update_day_night(_delta: float) -> void:
 	if _sun == null or _moon == null:
 		return
-	var t: float = fposmod(TimeManager.game_time * 60.0, DAY_LENGTH) / DAY_LENGTH  # 虚拟秒→昼夜相位
+	# TimeManager.game_time 为现实秒（1 月 = 5 秒）；直接取模 DAY_LENGTH 得到真实 90 秒一昼夜
+	var t: float = fposmod(TimeManager.game_time, DAY_LENGTH) / DAY_LENGTH
 	# --- 太阳 ---
 	var sun_phase: float = t * 2.0  # 0~1 为白昼，1~2 为夜晚
 	var sun_up: bool = sun_phase <= 1.0
