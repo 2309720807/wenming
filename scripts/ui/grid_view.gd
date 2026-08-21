@@ -7,6 +7,7 @@ class_name GridView
 
 signal hover_changed(cell: Vector2i)
 signal cell_clicked(cell: Vector2i)
+signal preview_cancel_requested  # 右键取消预选建造
 
 const FONT_BOLD: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
 const FONT_NORMAL: Font = preload("res://assets/fonts/SourceHanSansCN-Normal.ttf")
@@ -52,6 +53,13 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton \
 			and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		cell_clicked.emit(_pos_to_cell(event.position))
+	elif event is InputEventMouseButton \
+			and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		# 右键取消当前预选建造
+		if not preview_item.is_empty():
+			preview_item = {}
+			preview_cancel_requested.emit()
+			queue_redraw()
 
 
 # === 绘制 ===
@@ -155,8 +163,17 @@ func _draw_preview(origin: Vector2) -> void:
 	var w: int = int(preview_item.get("width", 1))
 	var h: int = int(preview_item.get("height", 1))
 	var rect := Rect2(origin + Vector2(hover_cell * _cell()), Vector2(w * _cell(), h * _cell()))
-	var can_build: bool = can_build_at(hover_cell, w, h)
-	var color: Color = Color(0.3, 0.95, 0.5, 0.4) if can_build else Color(0.95, 0.3, 0.3, 0.4)
+	var can_afford: bool = GameState.gold >= float(preview_item.get("cost", 0))
+	var can_build: bool = can_build_at(hover_cell, w, h) and can_afford
+	var color: Color
+	if can_build:
+		color = Color(0.3, 0.95, 0.5, 0.4)
+	elif not can_afford:
+		# 金币不足：红色闪烁警告预选状态
+		var blink: float = 0.55 + 0.35 * sin(Time.get_ticks_msec() * 0.012)
+		color = Color(0.95, 0.25, 0.25, blink)
+	else:
+		color = Color(0.95, 0.3, 0.3, 0.4)
 	draw_rect(rect, color)
 	draw_rect(rect, Color(color, 0.9), false, 2.0)
 

@@ -51,6 +51,7 @@ func _connect_signals() -> void:
 	menu.item_selected.connect(_on_item_selected)
 	grid_view.hover_changed.connect(_on_hover_changed)
 	grid_view.cell_clicked.connect(_on_cell_clicked)
+	grid_view.preview_cancel_requested.connect(_on_preview_cancel_requested)
 	BuildingSystem.grid_changed.connect(func(_cell: Vector2i) -> void: grid_view.queue_redraw())
 	BuildingSystem.building_completed.connect(_feedback.on_completed)
 	BuildingSystem.building_upgraded.connect(_feedback.on_upgraded)
@@ -63,6 +64,12 @@ func _connect_signals() -> void:
 
 
 # === 菜单选择 ===
+
+func _on_preview_cancel_requested() -> void:
+	## 右键取消预选：同步清空左侧菜单选中态与选择信息
+	menu.clear_selection()
+	_on_item_selected({})
+
 
 func _on_item_selected(item: Dictionary) -> void:
 	selected_item = item
@@ -98,7 +105,11 @@ func _on_hover_changed(cell: Vector2i) -> void:
 		else:
 			info_panel.hide()
 	elif _grid_view_can_build(cell):
-		_show_info(selected_item["name"], "点击放置（%d 金币）" % int(selected_item["cost"]))
+		if GameState.gold < float(selected_item.get("cost", 0)):
+			_show_info(selected_item["name"], "金币不足，无法建造（需要 %d 金币，当前 %d）" % [
+				int(selected_item["cost"]), int(GameState.gold)])
+		else:
+			_show_info(selected_item["name"], "点击放置（%d 金币）" % int(selected_item["cost"]))
 	else:
 		_show_info(selected_item["name"], "位置不可用：被占用或超出边界")
 

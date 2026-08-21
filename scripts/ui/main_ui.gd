@@ -40,10 +40,7 @@ func _ready() -> void:
 	debug_console.name = "DebugConsole"
 	add_child(debug_console)
 	_connect_signals()
-	var player_display: String = GameState.player_name
-	if player_display.is_empty():
-		player_display = "引导者"
-	message_log.add_message("欢迎你，%s！你的文明刚刚起步。" % player_display)
+	_show_civilization_summary()
 	# 默认进入地图与探索界面（网格建设）
 	_on_module_pressed("explore")
 	# 界面美化：面板入场 + 按钮动效（UiAnim，纯视觉）
@@ -55,6 +52,31 @@ func _ready() -> void:
 		btn_pause, btn_speed1, btn_speed2, btn_speed3, btn_settings,
 	]:
 		UiAnim.attach_button(btn)
+
+
+func _show_civilization_summary() -> void:
+	## 进入主界面时展示当前文明简要概览（替代固定欢迎语，需求：消息日志显示文明概览）
+	var player_display: String = GameState.player_name
+	if player_display.is_empty():
+		player_display = "引导者"
+	var completed: int = 0
+	var under_construction: int = 0
+	for key: String in BuildingSystem.placed:
+		var p: Dictionary = BuildingSystem.placed[key]
+		if p.get("completed", false):
+			completed += 1
+		elif p.get("op", "") != "":
+			under_construction += 1
+	message_log.add_message("━━━ 文明概览 ━━━")
+	message_log.add_message("%s 的文明 · %s · 人口 %d/%d" % [
+		player_display, GameState.get_time_display(), GameState.population, GameState.pop_max])
+	message_log.add_message("金币 %d (+%.0f/月) · 科技 %d · 文化 %d · 幸福度 %d%%" % [
+		int(GameState.gold), GameState.gold_rate, int(GameState.tech_points),
+		int(GameState.culture_points), GameState.happiness])
+	var build_text: String = "已建成建筑 %d 座" % completed
+	if under_construction > 0:
+		build_text += "，%d 项在建" % under_construction
+	message_log.add_message(build_text)
 
 
 func _connect_signals() -> void:

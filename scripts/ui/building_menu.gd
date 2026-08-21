@@ -92,6 +92,15 @@ func _make_card_style(selected: bool) -> StyleBoxFlat:
 	return sb
 
 
+func clear_selection() -> void:
+	## 取消当前选中卡片（右键取消预选建造时由 explore_map 调用）
+	if selected_id.is_empty():
+		return
+	selected_id = ""
+	for id: String in _cards:
+		_cards[id].add_theme_stylebox_override("panel", _make_card_style(false))
+
+
 func _on_card_pressed(item: Dictionary, card: PanelContainer) -> void:
 	# 再次点击已选中的建筑 = 取消选择
 	if selected_id == item["id"]:

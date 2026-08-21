@@ -72,7 +72,7 @@ func _on_resolution_selected(index: int) -> void:
 		WindowManager.set_resolution(resolutions[index])
 
 
-func _on_redeem_pressed() -> void:
+func _on_redeem_pressed(_text: String = "") -> void:
 	var result: Dictionary = GiftCodeManager.redeem(gift_code_input.text)
 	gift_code_input.clear()
 	gift_result_label.text = result["message"]
