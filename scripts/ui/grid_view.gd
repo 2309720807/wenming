@@ -82,10 +82,15 @@ func _process(delta: float) -> void:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_3d_world()
-	# 恢复缩放（跨场景/跨启动记忆，见 BuildingSystem.map_zoom）
+	# 恢复缩放与视角（跨场景/跨启动记忆，见 BuildingSystem.set_map_view / map_zoom）
 	zoom = clampf(BuildingSystem.map_zoom, _min_zoom(), ZOOM_MAX)
 	_cam_dist = CAM_DIST_BASE / maxf(zoom, 0.01)
-	_cam_target = _map_center()
+	_yaw = BuildingSystem.map_yaw
+	_pitch = clampf(BuildingSystem.map_pitch, CAM_PITCH_MIN, CAM_PITCH_MAX)
+	if BuildingSystem.map_target_x >= 0.0:
+		_cam_target = Vector3(BuildingSystem.map_target_x, 0.0, BuildingSystem.map_target_z)
+	else:
+		_cam_target = _map_center()
 	_update_camera()
 	# 数据层信号 → 3D 重建/更新
 	BuildingSystem.grid_changed.connect(func(_c: Vector2i) -> void: _rebuild_all())
@@ -93,9 +98,12 @@ func _ready() -> void:
 		_spawn_building(cell, id)
 		_spawn_effect_particles(cell, "place"))
 	BuildingSystem.building_completed.connect(func(cell: Vector2i, id: String) -> void:
+		# 重建建筑：恢复实态（不再半透明）、移除施工进度条，随后闪光+粒子
+		_rebuild_all()
 		_flash_building(cell, Color(1, 0.85, 0.35))
 		_spawn_effect_particles(cell, "complete"))
 	BuildingSystem.building_upgraded.connect(func(cell: Vector2i, id: String, _lv: int) -> void:
+		_rebuild_all()
 		_flash_building(cell, Color(0.55, 0.85, 1.0))
 		_spawn_effect_particles(cell, "upgrade"))
 	BuildingSystem.building_demolished.connect(func(cell: Vector2i, _id: String) -> void:
@@ -502,6 +510,7 @@ func _make_flat_mat(color: Color) -> StandardMaterial3D:
 	m.albedo_color = color
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED  # 双面渲染，任意视角可见
 	return m
 
 
@@ -555,6 +564,8 @@ func _update_camera() -> void:
 		cos(_yaw) * cos(_pitch)) * _cam_dist
 	_camera.position = _cam_target + offset
 	_camera.look_at(_cam_target, Vector3.UP)
+	# 视角记忆（跨场景/跨启动，写入 settings.cfg）
+	BuildingSystem.set_map_view(_yaw, _pitch, _cam_target)
 
 
 func _min_zoom() -> float:
@@ -581,6 +592,7 @@ func _zoom_at(factor: float) -> void:
 	if before != Vector3.ZERO and after != Vector3.ZERO:
 		_cam_target += before - after
 	_update_camera()
+	BuildingSystem.set_map_view(_yaw, _pitch, _cam_target, true)  # 缩放后强制保存视角
 
 
 func _screen_to_ground(screen_pos: Vector2) -> Vector3:
@@ -648,6 +660,7 @@ func _gui_input(event: InputEvent) -> void:
 			_last_mouse_pos = event.position
 		else:
 			_panning_view = false
+			BuildingSystem.set_map_view(_yaw, _pitch, _cam_target, true)  # 平移结束强制保存视角
 		return
 	if event is InputEventMouseMotion:
 		# 未选中建筑时：左键按住超过阈值切换为旋转视角（不再视为单击）
@@ -698,6 +711,7 @@ func _gui_input(event: InputEvent) -> void:
 			if _rotating:
 				_rotating = false
 				_click_armed = false
+				BuildingSystem.set_map_view(_yaw, _pitch, _cam_target, true)  # 旋转结束强制保存视角
 			elif _click_armed:
 				_click_armed = false
 				cell_clicked.emit(_screen_to_cell(event.position))
@@ -777,8 +791,9 @@ func _make_flat_quad(size: float, color: Color) -> Mesh:
 	st.add_vertex(Vector3(half, 0, -half))
 	st.add_vertex(Vector3(half, 0, half))
 	st.add_vertex(Vector3(-half, 0, half))
-	st.add_index(0); st.add_index(1); st.add_index(2)
-	st.add_index(0); st.add_index(2); st.add_index(3)
+	# 绕序反转：法线朝上（+Y），从上方俯视可见（修复：原绕序法线朝下被背面剔除，预选框看不见）
+	st.add_index(0); st.add_index(2); st.add_index(1)
+	st.add_index(0); st.add_index(3); st.add_index(2)
 	return st.commit()
 
 

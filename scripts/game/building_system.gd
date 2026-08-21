@@ -46,6 +46,13 @@ const MAP_ZOOM_MIN: float = 0.05  # 存储下限放宽：实际显示下限由 G
 const MAP_ZOOM_MAX: float = 3.0
 const SETTINGS_PATH: String = "user://settings.cfg"
 
+# === 3D 摄像机视角记忆（跨场景/跨启动，见 set_map_view）===
+var map_yaw: float = -0.7
+var map_pitch: float = 0.55
+var map_target_x: float = -1.0  # -1 表示未保存过（用地图中心）
+var map_target_z: float = -1.0
+var _last_view_save: float = 0.0
+
 
 func _ready() -> void:
 	_load_settings()
@@ -63,15 +70,36 @@ func set_map_zoom(value: float) -> void:
 	_save_settings()
 
 
+## 设置 3D 摄像机视角并记忆（跨场景切换保持 + settings.cfg 跨启动恢复；节流 1 秒写盘）
+## force=true 用于交互结束强制保存最终视角（避免节流只留下中间状态）
+func set_map_view(yaw: float, pitch: float, target: Vector3, force: bool = false) -> void:
+	map_yaw = yaw
+	map_pitch = pitch
+	map_target_x = target.x
+	map_target_z = target.z
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if force or now - _last_view_save > 1.0:
+		_last_view_save = now
+		_save_settings()
+
+
 func _load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) == OK:
 		map_zoom = clampf(float(cfg.get_value("display", "map_zoom", 1.0)), MAP_ZOOM_MIN, MAP_ZOOM_MAX)
+		map_yaw = float(cfg.get_value("display", "map_yaw", -0.7))
+		map_pitch = float(cfg.get_value("display", "map_pitch", 0.55))
+		map_target_x = float(cfg.get_value("display", "map_target_x", -1.0))
+		map_target_z = float(cfg.get_value("display", "map_target_z", -1.0))
 
 
 func _save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("display", "map_zoom", map_zoom)
+	cfg.set_value("display", "map_yaw", map_yaw)
+	cfg.set_value("display", "map_pitch", map_pitch)
+	cfg.set_value("display", "map_target_x", map_target_x)
+	cfg.set_value("display", "map_target_z", map_target_z)
 	cfg.save(SETTINGS_PATH)
 
 
