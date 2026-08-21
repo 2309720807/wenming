@@ -529,16 +529,17 @@ func _make_celestial_disc(radius: float, glow: Color) -> MeshInstance3D:
 	return disc
 
 
-## 每帧定位天体：沿光源反方向把圆盘推到远方（视差：太阳月亮挂在天上，不遮挡近景）
+## 每帧定位天体：沿光背向（+Z = 天空方向）把圆盘推到远处（太阳月亮挂在天上）
 func _update_celestial_disc(light: DirectionalLight3D, disc: MeshInstance3D, up: bool, dist: float) -> void:
 	if disc == null:
 		return
 	disc.visible = up
 	if not up:
 		return
-	# 光 -Z 为照射方向；反方向即天体悬挂位置（相对场景中心点）
-	var dir: Vector3 = -light.global_transform.basis.z
-	disc.position = _cam_target + dir.normalized() * dist
+	# DirectionalLight3D 朝 -Z 照射；+basis.z 即"光源所在"的天空方向
+	# 修复：原用 -basis.z（照射方向）把圆盘放到了地下，永远不可见
+	var sky_dir: Vector3 = light.global_transform.basis.z.normalized()
+	disc.position = _cam_target + sky_dir * dist
 
 
 ## 昼夜光影：太阳/月亮按游戏时间东升西落（方位 360° + 仰角正弦曲线）
@@ -556,8 +557,10 @@ func _update_day_night(_delta: float) -> void:
 		var az: float = sun_phase * PI           # 方位角 0..π（东→西）
 		var elev: float = sin(sun_phase * PI) * SUN_MAX_ELEV
 		_sun.rotation_degrees = Vector3(rad_to_deg(elev) - 90.0, lip_deg(az, -90.0, 90.0), 0.0)
-		_sun.light_energy = 1.1 * (0.35 + 0.65 * sin(sun_phase * PI))
-		_sun.light_color = SUN_NOON.lerp(SUN_WARM, 1.0 - sin(sun_phase * PI))
+		# 能量与仰角同步：日出/日落=0（平滑进入夜晚，原 0.35 残光在切换瞬间跳变）
+		var sun_curve: float = sin(sun_phase * PI)
+		_sun.light_energy = 1.1 * sun_curve
+		_sun.light_color = SUN_NOON.lerp(SUN_WARM, 1.0 - sun_curve)
 	else:
 		_sun.light_energy = 0.0
 	# --- 月亮 ---
@@ -567,22 +570,26 @@ func _update_day_night(_delta: float) -> void:
 		var maz: float = moon_phase * PI
 		var melev: float = sin(moon_phase * PI) * MOON_MAX_ELEV
 		_moon.rotation_degrees = Vector3(rad_to_deg(melev) - 90.0, lip_deg(maz, -90.0, 90.0), 0.0)
+		# 月光随月轨渐入（0→0.4→0），与天空 nightness 同步无暗隙
 		_moon.light_energy = 0.4 * sin(moon_phase * PI)
 	else:
 		_moon.light_energy = 0.0
 	# --- 太阳/月亮圆盘定位（沿光反方向远处，随仰角升降） ---
 	_update_celestial_disc(_sun, _sun_disc, sun_up, DISC_DIST)
 	_update_celestial_disc(_moon, _moon_disc, moon_up, DISC_DIST)
-	# --- 天空/环境渐变 ---
-	var dayness: float = clampf(sin(sun_phase * PI) if sun_up else 0.0, 0.0, 1.0)
+	# --- 天空/环境渐变（平滑连续，无瞬间跳变） ---
+	# 夜晚深沉度 = sin(月相位弧)：月出(0)→深更(0.5)=1→月落(1)→0，与月轨同步
+	var nightness: float = sin(moon_phase * PI)  # 月出月落时=0（黄昏），深夜=1
 	var sky_col: Color
 	var ambient: float
 	if sun_up:
+		var dayness: float = sin(sun_phase * PI)
 		sky_col = DAY_SKY.lerp(DUSK_SKY, 1.0 - dayness)
 		ambient = 0.35 + 0.35 * dayness
 	else:
-		sky_col = DUSK_SKY.lerp(NIGHT_SKY, clampf(1.0 - moon_phase * 2.0, 0.0, 1.0))
-		ambient = 0.12 + 0.1 * sin(moon_phase * PI)
+		# 黄昏(DUSK) → 深夜(NIGHT) → 黎明(DUSK)：nightness 0→1→0 平滑过渡
+		sky_col = DUSK_SKY.lerp(NIGHT_SKY, nightness)
+		ambient = 0.35 - 0.22 * nightness  # 黄昏 0.35 → 深夜 0.13
 	_sky.environment.background_color = sky_col
 	_sky.environment.ambient_light_color = sky_col.lightened(0.25)
 	_sky.environment.ambient_light_energy = ambient
