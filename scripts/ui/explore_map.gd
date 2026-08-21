@@ -104,17 +104,18 @@ func _build_top_buttons() -> void:
 	btn_demolish.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.35, 0.16, 0.12, 1.0)))
 	btn_demolish.pressed.connect(_on_demolish_mode_pressed)
 	add_child(btn_demolish)
-	# 取消建造按钮：位于拆除按钮左侧，选中建筑（进入建造）后显示，点击取消建造模式
+	# 取消建造按钮：位于拆除按钮左侧（等宽 88px，与三个按钮等距 8px），选中建筑后显示，点击取消建造模式
 	_btn_cancel_build = Button.new()
 	_btn_cancel_build.name = "BtnCancelBuild"
-	_btn_cancel_build.text = "✖ 取消建造"
-	_btn_cancel_build.custom_minimum_size = Vector2(96, 34)
+	_btn_cancel_build.text = "✖ 取消"
+	_btn_cancel_build.custom_minimum_size = Vector2(88, 34)
 	_btn_cancel_build.position = Vector2(size.x - 388, 8)
 	_btn_cancel_build.add_theme_font_override("font", FONT_BTN)
 	_btn_cancel_build.add_theme_font_size_override("font_size", 14)
-	_btn_cancel_build.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.55, 0.45, 0.2, 0.9)))
-	_btn_cancel_build.add_theme_stylebox_override("hover", _make_top_btn_style(Color(0.75, 0.6, 0.28, 1.0)))
-	_btn_cancel_build.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.4, 0.32, 0.14, 1.0)))
+	# 红色系（取消/危险操作语义，与拆除按钮区分）
+	_btn_cancel_build.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.7, 0.22, 0.22, 0.9)))
+	_btn_cancel_build.add_theme_stylebox_override("hover", _make_top_btn_style(Color(0.9, 0.32, 0.3, 1.0)))
+	_btn_cancel_build.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.55, 0.16, 0.16, 1.0)))
 	_btn_cancel_build.visible = false
 	_btn_cancel_build.pressed.connect(_on_cancel_build_pressed)
 	add_child(_btn_cancel_build)
