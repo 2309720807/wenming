@@ -131,6 +131,7 @@ func _collect_state() -> Dictionary:
 		"culture_points": GameState.culture_points, "culture_rate": GameState.culture_rate,
 		"grid": BuildingSystem.grid,
 		"placed": BuildingSystem.placed,
+		"military": MilitarySystem.collect_state(),
 		"base_stats": {
 			"gold_rate": BuildingSystem.base_gold_rate,
 			"pop_max": BuildingSystem.base_pop_max,
@@ -153,6 +154,7 @@ func load_game(file_name: String) -> Dictionary:
 	GameState.restore_state(parsed)
 	BuildingSystem.restore_state(
 		parsed.get("grid", []), parsed.get("placed", {}), parsed.get("base_stats", {}))
+	MilitarySystem.restore_state(parsed.get("military", {}))
 	# 同步游戏时间：避免 TimeManager 用"本次启动运行时长"覆盖存档年月（修复：不同存档进入后时间被抹平）
 	TimeManager.sync_to_save(GameState.year, GameState.month)
 	_write_last_role(GameState.player_name.strip_edges())

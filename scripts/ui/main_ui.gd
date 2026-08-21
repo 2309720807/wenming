@@ -120,6 +120,10 @@ func _on_paused_changed(is_paused: bool) -> void:
 # === 模块导航 ===
 
 func _on_module_pressed(module_name: String) -> void:
+	if module_name == "military":
+		# 军事与防御为独立界面（制造/基地建设，见设计文档 3.12）
+		get_tree().change_scene_to_file("res://scenes/ui/military/military_view.tscn")
+		return
 	_highlight_active_button(module_name)
 	_show_module_placeholder(module_name)
 
