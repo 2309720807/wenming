@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/explore_map.gd" id="1_explore"]
 [ext_resource type="Script" path="res://scripts/ui/building_menu.gd" id="2_menu"]
@@ -41,6 +41,153 @@ corner_radius_bottom_left = 12
 shadow_color = Color(0.0, 0.0, 0.0, 0.4)
 shadow_size = 12
 shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_upgrade_normal"]
+bg_color = Color(0.25, 0.55, 0.95, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.7, 0.92, 1, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.25)
+shadow_size = 4
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_upgrade_hover"]
+bg_color = Color(0.38, 0.68, 1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.85, 0.97, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.3, 0.6, 1, 0.3)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_upgrade_pressed"]
+bg_color = Color(0.18, 0.44, 0.82, 1)
+border_width_left = 1
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.6, 0.85, 1, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.2)
+shadow_size = 3
+shadow_offset = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_upgrade_disabled"]
+bg_color = Color(0.12, 0.2, 0.34, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.3, 0.5, 0.8, 0.5)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_demolish_normal"]
+bg_color = Color(0.85, 0.3, 0.3, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(1, 0.75, 0.7, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.25)
+shadow_size = 4
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_demolish_hover"]
+bg_color = Color(1, 0.42, 0.4, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(1, 0.9, 0.85, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.9, 0.3, 0.3, 0.3)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_demolish_pressed"]
+bg_color = Color(0.7, 0.22, 0.22, 1)
+border_width_left = 1
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.95, 0.65, 0.6, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.2)
+shadow_size = 3
+shadow_offset = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_close_normal"]
+bg_color = Color(0.36, 0.44, 0.58, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.8, 0.88, 1, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.25)
+shadow_size = 4
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_close_hover"]
+bg_color = Color(0.48, 0.58, 0.75, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.92, 0.96, 1, 0.95)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.4, 0.55, 0.8, 0.3)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_btn_close_pressed"]
+bg_color = Color(0.27, 0.34, 0.46, 1)
+border_width_left = 1
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.7, 0.8, 0.95, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.2)
+shadow_size = 3
+shadow_offset = Vector2(0, 1)
 
 [node name="ExploreMap" type="Control"]
 layout_mode = 3
@@ -207,23 +354,40 @@ text = "人口上限+10/级"
 [node name="ActionUpgradeBtn" type="Button" parent="ActionPanel/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.15, 0.2, 0.1, 1)
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.9, 0.95, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.8, 0.85, 0.95, 0.6)
 theme_override_fonts/font = ExtResource("5_font_bold")
 theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleBox_btn_upgrade_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_upgrade_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_upgrade_pressed")
+theme_override_styles/disabled = SubResource("StyleBox_btn_upgrade_disabled")
 text = "升级至 Lv.2（45 金币）"
 
 [node name="ActionDemolishBtn" type="Button" parent="ActionPanel/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.08, 0.08, 1)
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.92, 0.9, 1)
 theme_override_fonts/font = ExtResource("5_font_bold")
 theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleBox_btn_demolish_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_demolish_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_demolish_pressed")
 text = "拆除（返还 36 金币）"
 
 [node name="ActionCloseBtn" type="Button" parent="ActionPanel/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.82, 0.95, 1)
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.92, 0.95, 1, 1)
 theme_override_fonts/font = ExtResource("5_font_bold")
 theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBox_btn_close_normal")
+theme_override_styles/hover = SubResource("StyleBox_btn_close_hover")
+theme_override_styles/pressed = SubResource("StyleBox_btn_close_pressed")
 text = "关闭"

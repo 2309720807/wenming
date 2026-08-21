@@ -658,7 +658,15 @@ class MapExpandPanel:
 			btn.custom_minimum_size = Vector2(0, 40)
 			btn.add_theme_font_override("font", FONT_BOLD)
 			btn.add_theme_font_size_override("font_size", 15)
-			btn.add_theme_color_override("font_color", Color(0.1, 0.16, 0.08, 1))
+			# 亮色按钮（用户反馈弹窗按钮偏暗看不清）：亮蓝底 + 白字
+			btn.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+			btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+			btn.add_theme_color_override("font_pressed_color", Color(0.9, 0.95, 1, 1))
+			btn.add_theme_color_override("font_disabled_color", Color(0.75, 0.82, 0.95, 0.6))
+			btn.add_theme_stylebox_override("normal", _make_btn_style(Color(0.25, 0.55, 0.95, 1.0)))
+			btn.add_theme_stylebox_override("hover", _make_btn_style(Color(0.38, 0.68, 1.0, 1.0)))
+			btn.add_theme_stylebox_override("pressed", _make_btn_style(Color(0.18, 0.44, 0.82, 1.0)))
+			btn.add_theme_stylebox_override("disabled", _make_btn_style(Color(0.1, 0.18, 0.32, 0.95)))
 			btn.pressed.connect(_on_tier_pressed.bind(steps))
 			vbox.add_child(btn)
 			_tier_buttons.append(btn)
@@ -675,7 +683,13 @@ class MapExpandPanel:
 		close_btn.text = "关闭"
 		close_btn.add_theme_font_override("font", FONT_BOLD)
 		close_btn.add_theme_font_size_override("font_size", 14)
-		close_btn.add_theme_color_override("font_color", Color(0.75, 0.82, 0.95, 1))
+		# 亮色按钮：亮钢灰底 + 白字
+		close_btn.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		close_btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+		close_btn.add_theme_color_override("font_pressed_color", Color(0.9, 0.94, 1, 1))
+		close_btn.add_theme_stylebox_override("normal", _make_btn_style(Color(0.34, 0.42, 0.56, 1.0)))
+		close_btn.add_theme_stylebox_override("hover", _make_btn_style(Color(0.46, 0.55, 0.72, 1.0)))
+		close_btn.add_theme_stylebox_override("pressed", _make_btn_style(Color(0.26, 0.33, 0.45, 1.0)))
 		close_btn.pressed.connect(hide)
 		vbox.add_child(close_btn)
 
@@ -692,6 +706,19 @@ class MapExpandPanel:
 		sb.shadow_color = Color(0, 0, 0, 0.4)
 		sb.shadow_size = 12
 		sb.shadow_offset = Vector2(0, 4)
+		return sb
+
+
+	func _make_btn_style(bg: Color) -> StyleBoxFlat:
+		## 明亮弹窗按钮样式：亮底 + 亮边框 + 圆角（提升可读性，用户反馈暗色按钮看不清）
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = bg
+		sb.set_border_width_all(1)
+		sb.border_color = Color(0.75, 0.92, 1.0, 0.85)
+		sb.set_corner_radius_all(8)
+		sb.shadow_color = Color(0, 0, 0, 0.25)
+		sb.shadow_size = 4
+		sb.shadow_offset = Vector2(0, 2)
 		return sb
 
 

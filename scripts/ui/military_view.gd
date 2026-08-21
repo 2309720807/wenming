@@ -22,6 +22,10 @@ func _ready() -> void:
 	WindowManager.setup_scale_root(self)
 	_build_ui()
 	MilitarySystem.inventory_changed.connect(_refresh_inventory)
+	# 防御页库存按钮随库存变化实时刷新（拖动批量部署时数字同步）
+	MilitarySystem.inventory_changed.connect(func() -> void:
+		if _current_page == "defense":
+			_refresh_defense_panel())
 	MilitarySystem.base_changed.connect(func(_c: Vector2i) -> void: _refresh_base_info())
 	MilitarySystem.siege_triggered.connect(func(wave: int, power: int) -> void:
 		_info_label.text = "⚔ 人机攻城来袭！第 %d 波（战力 %d）" % [wave, power])
@@ -318,7 +322,8 @@ func _make_card_style() -> StyleBoxFlat:
 class MilitaryBaseGrid:
 	extends Control
 
-	## 军事基地网格：绘制 base_grid/base_placed，点击部署选中设施，右键拆除。
+	## 军事基地网格：绘制 base_grid/base_placed，点击部署选中设施，右键拆除；
+	## 支持选中设施后左键拖动批量部署（划过可建格连续部署，同主地图连续建造）。
 
 	signal unit_selected(unit_id: String)  # 点击已部署设施时选中其类型
 	signal remove_requested(cell: Vector2i)
@@ -329,6 +334,15 @@ class MilitaryBaseGrid:
 	var edit_mode: bool = false
 	var selected_unit: String = ""  # 父类同步的当前选中设施 id
 	var _hover_cell: Vector2i = Vector2i(-1, -1)
+
+	# === 左键拖动批量部署（选中设施后按住左键划过可建格连续部署）===
+	var _mouse_left_down: bool = false
+	var _press_pos: Vector2 = Vector2.ZERO
+	var _press_cell: Vector2i = Vector2i(-1, -1)
+	var _click_armed: bool = false  # 按下在空白格，等待拖动/单击判定
+	var _dragging: bool = false
+	var _last_drag_cell: Vector2i = Vector2i(-1, -1)
+	const DRAG_THRESHOLD: float = 6.0  # 超过该像素距离视为拖动而非单击
 
 
 	func _ready() -> void:
@@ -343,21 +357,49 @@ class MilitaryBaseGrid:
 			if c != _hover_cell:
 				_hover_cell = c
 				queue_redraw()
-		elif event is InputEventMouseButton and event.pressed:
-			var c: Vector2i = _pos_to_cell(event.position)
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				# 点击已部署设施则选中其类型；点击空白格部署选中设施
-				var placed_key: String = MilitarySystem.get_placed_key(c)
+			# 拖动批量部署：选中设施后按住左键划过可建格连续部署
+			if _dragging:
+				if c.x >= 0 and c != _last_drag_cell:
+					_last_drag_cell = c
+					place_requested.emit(c)
+			elif _mouse_left_down and _click_armed and not _dragging \
+					and event.position.distance_to(_press_pos) > DRAG_THRESHOLD:
+				_dragging = true
+				_last_drag_cell = Vector2i(-1, -1)
+			return
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			_mouse_left_down = event.pressed
+			if event.pressed:
+				_press_pos = event.position
+				_press_cell = _pos_to_cell(event.position)
+				_last_drag_cell = Vector2i(-1, -1)
+				# 点击已部署设施：立即选中其类型（不进入拖动）
+				var placed_key: String = MilitarySystem.get_placed_key(_press_cell)
 				if placed_key != "":
 					unit_selected.emit(MilitarySystem.base_placed[placed_key]["unit_id"])
-					return
-				if not selected_unit.is_empty():
-					place_requested.emit(c)
+					_click_armed = false
 				else:
-					unit_selected.emit("")  # 无选中设施时取消选择
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				if MilitarySystem.get_placed_key(c) != "":
-					remove_requested.emit(c)
+					_click_armed = true
+			else:
+				if _dragging:
+					# 拖动结束
+					_dragging = false
+					_click_armed = false
+				elif _click_armed:
+					# 未拖动：单击空白格部署选中设施（无选中则取消选择）
+					_click_armed = false
+					if not selected_unit.is_empty():
+						place_requested.emit(_press_cell)
+					else:
+						unit_selected.emit("")
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+			var c: Vector2i = _pos_to_cell(event.position)
+			if MilitarySystem.get_placed_key(c) != "":
+				remove_requested.emit(c)
+			# 右键同时终止拖动状态
+			_mouse_left_down = false
+			_dragging = false
+			_click_armed = false
 
 
 	func _draw() -> void:

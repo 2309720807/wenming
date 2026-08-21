@@ -14,7 +14,6 @@ signal demolish_mode_changed(on: bool)      # 拆除模式开关
 
 const ZOOM_MIN: float = 0.4
 const ZOOM_MAX: float = 3.0
-const PAN_MARGIN: float = 24.0  # 平移边界：地图至少保留该边距在视口内
 const PAN_DRAG_THRESHOLD: float = 6.0  # 左键按住超过该像素距离视为平移而非单击
 
 var zoom: float = 1.0
@@ -57,6 +56,8 @@ func _ready() -> void:
 	# 恢复地图缩放比例（跨场景/跨启动记忆，见 BuildingSystem.map_zoom）
 	zoom = BuildingSystem.map_zoom
 	_clamp_pan()
+	# 大地图时恢复的缩放可能低于"整图可见"所需，延迟一帧校正（_ready 时布局未完成）
+	_ensure_min_zoom.call_deferred()
 	# 建造/完工/升级/拆除特效粒子（数据层信号驱动）
 	BuildingSystem.building_placed.connect(func(cell: Vector2i, _id: String) -> void:
 		_spawn_build_particles(cell, "place"))
@@ -607,9 +608,9 @@ func _selection_rect() -> Rect2i:
 
 
 func set_zoom(new_zoom: float) -> void:
-	## 滚轮缩放地图（0.4x ~ 3.0x），网格以中央区域中心为锚点缩放；
-	## 同步 BuildingSystem.map_zoom 实现跨场景/跨启动记忆
-	zoom = clampf(new_zoom, ZOOM_MIN, ZOOM_MAX)
+	## 滚轮缩放地图（最小缩放动态适配地图尺寸，保证整图可见；最大 3.0x），
+	## 网格以中央区域中心为锚点缩放；同步 BuildingSystem.map_zoom 实现跨场景/跨启动记忆
+	zoom = clampf(new_zoom, _min_zoom(), ZOOM_MAX)
 	BuildingSystem.set_map_zoom(zoom)
 	_clamp_pan()
 	queue_redraw()
@@ -617,7 +618,7 @@ func set_zoom(new_zoom: float) -> void:
 
 func _zoom_at(cursor: Vector2, factor: float) -> void:
 	## 以光标为锚点缩放：光标下的地图点缩放前后位置保持不变
-	var new_zoom: float = clampf(zoom * factor, ZOOM_MIN, ZOOM_MAX)
+	var new_zoom: float = clampf(zoom * factor, _min_zoom(), ZOOM_MAX)
 	if is_equal_approx(new_zoom, zoom):
 		return
 	var rel: Vector2 = (cursor - _grid_origin()) / zoom  # 光标相对网格原点（zoom=1 像素单位）
@@ -639,24 +640,42 @@ func _grid_origin() -> Vector2:
 	return _base_origin() + _pan
 
 
+func _min_zoom() -> float:
+	# 动态最小缩放：保证无论地图多大，最小都能缩放到看到整个地图（宽高分别适配视口）
+	var fit_x: float = size.x / (float(BuildingSystem.GRID_W) * float(BuildingSystem.cell_size))
+	var fit_y: float = size.y / (float(BuildingSystem.GRID_H) * float(BuildingSystem.cell_size))
+	return minf(ZOOM_MIN, minf(fit_x, fit_y))
+
+
+func _ensure_min_zoom() -> void:
+	# 恢复/窗口变化后校正最小缩放：大地图时恢复值可能低于整图可见所需
+	var mz: float = _min_zoom()
+	if zoom < mz:
+		zoom = mz
+		BuildingSystem.set_map_zoom(zoom)
+		_clamp_pan()
+		queue_redraw()
+
+
 func _clamp_pan() -> void:
-	# 地图比视口小时锁定居中（拖不出空白）；比视口大时限制至少 PAN_MARGIN 可见，
-	# 保证地图始终只在地图显示区域内，不会溢出覆盖两侧菜单/信息面板
+	# 地图视窗不能移动到地图外面：地图比视口大时，视口四边始终被地图覆盖（看不到地图外的空白）；
+	# 地图比视口小时锁定居中（不产生可拖动的空白区域）
 	var grid_px: Vector2 = Vector2(BuildingSystem.GRID_W, BuildingSystem.GRID_H) * _cell()
 	var base: Vector2 = _base_origin()
-	if grid_px.x + PAN_MARGIN * 2.0 <= size.x:
+	if grid_px.x >= size.x:
+		_pan.x = clampf(_pan.x, size.x - base.x - grid_px.x, -base.x)
+	else:
 		_pan.x = 0.0
+	if grid_px.y >= size.y:
+		_pan.y = clampf(_pan.y, size.y - base.y - grid_px.y, -base.y)
 	else:
-		_pan.x = clampf(_pan.x, PAN_MARGIN - base.x - grid_px.x, size.x - PAN_MARGIN - base.x)
-	if grid_px.y + PAN_MARGIN * 2.0 <= size.y:
 		_pan.y = 0.0
-	else:
-		_pan.y = clampf(_pan.y, PAN_MARGIN - base.y - grid_px.y, size.y - PAN_MARGIN - base.y)
 
 
 func _notification(what: int) -> void:
-	# 窗口尺寸变化后重新约束平移范围
+	# 窗口尺寸变化后：重新校正最小缩放（整图可见）并约束平移范围
 	if what == NOTIFICATION_RESIZED:
+		_ensure_min_zoom()
 		_clamp_pan()
 		queue_redraw()
 
