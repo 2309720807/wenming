@@ -80,8 +80,9 @@ static func _build_residence(root: Node3D, tw: float, td: float, cellf: float, b
 	_add_box(root, tw * 0.26, cellf * 0.04, cellf * 0.18, base.darkened(0.15),
 			Vector3(0, cellf * 0.26, td * 0.54))
 	# 双坡人字形屋顶（屋脊沿 X，SurfaceTool 手工构建，法线朝外）
+	# 抬高 1% 格防止与楼体顶面共面 z-fighting（视觉上仍贴合楼顶）
 	var roof := _gable_roof(tw * 1.04, td * 1.04, cellf * 0.3, roof_c)
-	roof.position = Vector3(0, body_h, 0)
+	roof.position = Vector3(0, body_h + cellf * 0.01, 0)
 	root.add_child(roof)
 
 
@@ -321,10 +322,15 @@ static func _gable_roof(tw: float, td: float, rh: float, color: Color) -> MeshIn
 	# 山墙（朝 +X）：b-f-c；山墙（朝 -X）：a-d-e
 	st.add_vertex(b); st.add_vertex(f); st.add_vertex(c)
 	st.add_vertex(a); st.add_vertex(d); st.add_vertex(e)
+	# 封底面（朝 -Y）：a-c-b / a-d-c（封闭下侧，俯视低角度不露内腔）
+	st.add_vertex(a); st.add_vertex(c); st.add_vertex(b)
+	st.add_vertex(a); st.add_vertex(d); st.add_vertex(c)
 	st.generate_normals()
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
-	mi.material_override = _make_mat(color)
+	var mat := _make_mat(color)
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED  # 双面渲染：任意视角均实心（修复低俯仰角屋顶"透明"）
+	mi.material_override = mat
 	return mi
 
 
