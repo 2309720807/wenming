@@ -38,33 +38,49 @@ static func build(item: Dictionary, level: int, cellf: float) -> Node3D:
 # ========== 住宅：中国多层住宅楼（每层阳台+窗格+坡屋顶+入口门廊） ==========
 
 static func _build_residence(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
+	# 多色调色板（真实中国多层住宅楼配色）：
+	# 主墙=识别绿 base；白窗框+蓝玻璃；米白阳台；深灰基座；木棕门；砖红屋顶
+	var frame_c := Color(0.93, 0.94, 0.96)  # 白窗框
+	var glass_c := Color(0.6, 0.78, 0.95)   # 蓝玻璃
+	var balcony_c := Color(0.88, 0.84, 0.72)  # 米白阳台
+	var base_c := Color(0.35, 0.37, 0.42)   # 深灰基座
+	var door_c := Color(0.42, 0.28, 0.18)   # 木棕门
+	var roof_c := Color(0.56, 0.34, 0.28)   # 砖红屋顶
 	var floors: int = 2 + mini(level, 4)  # 2~6 层（升级长高）
 	var body_h: float = cellf * (0.5 + 0.28 * floors)
-	# 主体 + 深色基座
+	# 主体 + 深灰基座
 	_add_box(root, tw, body_h, td, base, Vector3(0, body_h * 0.5, 0))
-	_add_box(root, tw * 1.02, cellf * 0.18, td * 1.02, base.darkened(0.3), Vector3(0, cellf * 0.09, 0))
-	# 每层：正面两窗一阳台、背面两窗、侧面一窗
+	_add_box(root, tw * 1.02, cellf * 0.18, td * 1.02, base_c, Vector3(0, cellf * 0.09, 0))
+	# 每层：正面两窗（白框+蓝玻）一阳台、背面两窗、侧面一窗
 	for f: int in range(floors):
 		var yy: float = cellf * (0.36 + 0.28 * f)
-		_add_box(root, tw * 0.16, cellf * 0.13, cellf * 0.05, Color(0.62, 0.8, 0.95),
+		_add_box(root, tw * 0.2, cellf * 0.17, cellf * 0.03, frame_c,
+				Vector3(-tw * 0.27, yy, td * 0.51))
+		_add_box(root, tw * 0.16, cellf * 0.13, cellf * 0.05, glass_c,
 				Vector3(-tw * 0.27, yy, td * 0.52))
-		_add_box(root, tw * 0.16, cellf * 0.13, cellf * 0.05, Color(0.62, 0.8, 0.95),
+		_add_box(root, tw * 0.2, cellf * 0.17, cellf * 0.03, frame_c,
+				Vector3(tw * 0.27, yy, td * 0.51))
+		_add_box(root, tw * 0.16, cellf * 0.13, cellf * 0.05, glass_c,
 				Vector3(tw * 0.27, yy, td * 0.52))
-		_add_box(root, tw * 0.34, cellf * 0.1, cellf * 0.16, base.lightened(0.25),
+		_add_box(root, tw * 0.34, cellf * 0.1, cellf * 0.16, balcony_c,
 				Vector3(0, yy, td * 0.55))
+		_add_box(root, tw * 0.2, cellf * 0.17, cellf * 0.03, frame_c,
+				Vector3(-tw * 0.27, yy, -td * 0.51))
 		_add_box(root, tw * 0.16, cellf * 0.13, cellf * 0.05, Color(0.55, 0.72, 0.88),
 				Vector3(-tw * 0.27, yy, -td * 0.52))
+		_add_box(root, tw * 0.2, cellf * 0.17, cellf * 0.03, frame_c,
+				Vector3(tw * 0.27, yy, -td * 0.51))
 		_add_box(root, tw * 0.16, cellf * 0.13, cellf * 0.05, Color(0.55, 0.72, 0.88),
 				Vector3(tw * 0.27, yy, -td * 0.52))
 		_add_box(root, cellf * 0.05, cellf * 0.13, td * 0.16, Color(0.55, 0.72, 0.88),
 				Vector3(tw * 0.52, yy, 0))
-	# 入口门廊（深色门 + 雨棚）
-	_add_box(root, tw * 0.2, cellf * 0.22, cellf * 0.1, Color(0.32, 0.24, 0.2),
+	# 入口门廊（木棕门 + 雨棚）
+	_add_box(root, tw * 0.2, cellf * 0.22, cellf * 0.1, door_c,
 			Vector3(0, cellf * 0.11, td * 0.53))
 	_add_box(root, tw * 0.26, cellf * 0.04, cellf * 0.18, base.darkened(0.15),
 			Vector3(0, cellf * 0.26, td * 0.54))
 	# 双坡人字形屋顶（屋脊沿 X，SurfaceTool 手工构建，法线朝外）
-	var roof := _gable_roof(tw * 1.04, td * 1.04, cellf * 0.3, base.darkened(0.22))
+	var roof := _gable_roof(tw * 1.04, td * 1.04, cellf * 0.3, roof_c)
 	roof.position = Vector3(0, body_h, 0)
 	root.add_child(roof)
 
@@ -72,29 +88,35 @@ static func _build_residence(root: Node3D, tw: float, td: float, cellf: float, b
 # ========== 办公楼：玻璃幕墙写字楼（四面幕墙+楼板线+竖向楣条+屋顶机房） ==========
 
 static func _build_office(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
+	# 多色调色板（现代玻璃幕墙写字楼）：深蓝灰核心筒/蓝玻璃幕墙/银灰楣条/白楼板/灰白设备
+	var core_c := base.darkened(0.12)          # 核心筒深蓝灰
+	var glass: StandardMaterial3D = _make_mat(Color(0.58, 0.8, 0.98, 0.55), 0.08, 0.55)
+	var mullion_c := Color(0.74, 0.78, 0.85)   # 银灰楣条
+	var slab_c := Color(0.93, 0.94, 0.96)      # 白色楼板线
+	var mech_c := Color(0.72, 0.75, 0.8)       # 设备楼灰
+	var tank_c := Color(0.6, 0.72, 0.85)       # 水箱蓝灰
 	var floors: int = 3 + mini(level, 4)  # 3~7 层
 	var body_h: float = cellf * (0.4 + 0.24 * floors)
 	# 核心筒（比幕墙小一圈）
-	_add_box(root, tw * 0.8, body_h, td * 0.8, base, Vector3(0, body_h * 0.5, 0))
+	_add_box(root, tw * 0.8, body_h, td * 0.8, core_c, Vector3(0, body_h * 0.5, 0))
 	# 玻璃幕墙（四面半透明）
-	var glass: StandardMaterial3D = _make_mat(Color(0.6, 0.85, 1.0, 0.5), 0.08, 0.55)
 	_add_box_mat(root, tw, body_h, cellf * 0.04, glass, Vector3(0, body_h * 0.5, td * 0.42))
 	_add_box_mat(root, tw, body_h, cellf * 0.04, glass, Vector3(0, body_h * 0.5, -td * 0.42))
 	_add_box_mat(root, cellf * 0.04, body_h, td, glass, Vector3(tw * 0.42, body_h * 0.5, 0))
 	_add_box_mat(root, cellf * 0.04, body_h, td, glass, Vector3(-tw * 0.42, body_h * 0.5, 0))
-	# 楼层楼板线
+	# 楼层楼板线（白）
 	for f: int in range(floors + 1):
-		_add_box(root, tw * 0.86, cellf * 0.045, td * 0.86, base.lightened(0.3),
+		_add_box(root, tw * 0.86, cellf * 0.045, td * 0.86, slab_c,
 				Vector3(0, cellf * (0.42 + 0.24 * f), 0))
-	# 竖向幕墙楣条（正面 4 根）
+	# 竖向幕墙楣条（银灰，正面 4 根）
 	for i: int in range(4):
 		var gx: float = (i - 1.5) * tw * 0.22
-		_add_box(root, cellf * 0.045, body_h, cellf * 0.05, base.darkened(0.25),
+		_add_box(root, cellf * 0.045, body_h, cellf * 0.05, mullion_c,
 				Vector3(gx, body_h * 0.5, td * 0.45))
-	# 顶层设备楼（机房+水箱）
-	_add_box(root, tw * 0.5, cellf * 0.3, td * 0.5, base.darkened(0.15),
+	# 顶层设备楼（灰机房 + 蓝灰水箱）
+	_add_box(root, tw * 0.5, cellf * 0.3, td * 0.5, mech_c,
 			Vector3(tw * 0.12, body_h + cellf * 0.15, 0))
-	_add_box(root, cellf * 0.2, cellf * 0.2, cellf * 0.2, Color(0.75, 0.78, 0.85),
+	_add_box(root, cellf * 0.2, cellf * 0.2, cellf * 0.2, tank_c,
 			Vector3(-tw * 0.18, body_h + cellf * 0.1, td * 0.12))
 	# 入口玻璃门厅
 	_add_box_mat(root, tw * 0.4, cellf * 0.3, cellf * 0.12, glass, Vector3(0, cellf * 0.15, td * 0.44))
@@ -103,27 +125,40 @@ static func _build_office(root: Node3D, tw: float, td: float, cellf: float, base
 # ========== 学校：校园教学楼（L 形楼体 + 钟楼旗杆 + 操场跑道） ==========
 
 static func _build_school(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
+	# 多色调色板（校园配色）：米黄主楼/红砖裙线/白窗框蓝窗/深灰塔帽/金钟盘/红跑道/绿球场
+	var wall_c := Color(0.9, 0.84, 0.66)      # 米黄教学楼
+	var brick_c := Color(0.72, 0.42, 0.32)    # 红砖腰线
+	var frame_c := Color(0.95, 0.95, 0.94)    # 白窗框
+	var glass_c := Color(0.6, 0.78, 0.95)     # 蓝玻璃
+	var tower_c := Color(0.45, 0.35, 0.5)     # 钟楼深紫灰
+	var cap_c := Color(0.3, 0.32, 0.38)       # 深灰塔帽
+	var clock_c := Color(1.0, 0.92, 0.55)     # 金色钟盘
 	var wing_h: float = cellf * (0.55 + 0.18 * mini(level + 1, 4))
-	# L 形两翼
-	_add_box(root, tw * 0.62, wing_h, td * 0.5, base, Vector3(-tw * 0.17, wing_h * 0.5, -td * 0.2))
-	_add_box(root, tw * 0.34, wing_h, td * 0.92, base, Vector3(tw * 0.3, wing_h * 0.5, 0))
-	# 每层窗格
+	# L 形两翼 + 红砖腰线
+	_add_box(root, tw * 0.62, wing_h, td * 0.5, wall_c, Vector3(-tw * 0.17, wing_h * 0.5, -td * 0.2))
+	_add_box(root, tw * 0.34, wing_h, td * 0.92, wall_c, Vector3(tw * 0.3, wing_h * 0.5, 0))
+	_add_box(root, tw * 0.62, cellf * 0.12, td * 0.52, brick_c, Vector3(-tw * 0.17, cellf * 0.06, -td * 0.2))
+	# 每层窗格（白框+蓝玻）
 	for f: int in range(1 + mini(level, 3)):
 		var yy: float = cellf * (0.3 + 0.24 * f)
 		for i: int in range(3):
-			_add_box(root, cellf * 0.12, cellf * 0.12, cellf * 0.04, Color(0.62, 0.8, 0.95),
+			_add_box(root, cellf * 0.16, cellf * 0.16, cellf * 0.03, frame_c,
 					Vector3(-tw * 0.36 + i * tw * 0.19, yy, -td * 0.02))
-		_add_box(root, cellf * 0.12, cellf * 0.12, cellf * 0.04, Color(0.62, 0.8, 0.95),
+			_add_box(root, cellf * 0.12, cellf * 0.12, cellf * 0.04, glass_c,
+					Vector3(-tw * 0.36 + i * tw * 0.19, yy, -td * 0.03))
+		_add_box(root, cellf * 0.16, cellf * 0.16, cellf * 0.03, frame_c,
+				Vector3(tw * 0.3, yy, td * 0.46))
+		_add_box(root, cellf * 0.12, cellf * 0.12, cellf * 0.04, glass_c,
 				Vector3(tw * 0.3, yy, td * 0.47))
-	# 钟楼（高塔 + 四面钟盘 + 尖顶）
+	# 钟楼（深紫灰高塔 + 金色钟盘 + 深灰尖顶）
 	var tower_h: float = wing_h + cellf * 0.9
-	_add_box(root, cellf * 0.3, tower_h, cellf * 0.3, base.lightened(0.12),
+	_add_box(root, cellf * 0.3, tower_h, cellf * 0.3, tower_c,
 			Vector3(-tw * 0.17, tower_h * 0.5, td * 0.2))
-	_add_box(root, cellf * 0.16, cellf * 0.14, cellf * 0.03, Color(1, 0.95, 0.6),
+	_add_box(root, cellf * 0.16, cellf * 0.14, cellf * 0.03, clock_c,
 			Vector3(-tw * 0.17, wing_h + cellf * 0.5, td * 0.2 + cellf * 0.16))
-	_add_box(root, cellf * 0.16, cellf * 0.14, cellf * 0.03, Color(1, 0.95, 0.6),
+	_add_box(root, cellf * 0.16, cellf * 0.14, cellf * 0.03, clock_c,
 			Vector3(-tw * 0.17, wing_h + cellf * 0.5, td * 0.2 - cellf * 0.16))
-	var spike := _cone(cellf * 0.14, cellf * 0.36, base.darkened(0.2))
+	var spike := _cone(cellf * 0.14, cellf * 0.36, cap_c)
 	spike.position = Vector3(-tw * 0.17, tower_h + cellf * 0.18, td * 0.2)
 	root.add_child(spike)
 	# 旗杆 + 红旗
@@ -132,7 +167,7 @@ static func _build_school(root: Node3D, tw: float, td: float, cellf: float, base
 	root.add_child(pole)
 	_add_box(root, cellf * 0.22, cellf * 0.09, cellf * 0.04, Color(0.88, 0.35, 0.4),
 			Vector3(tw * 0.3 + cellf * 0.11, cellf * 0.66, -td * 0.32))
-	# 操场跑道（红色矩形环 + 草地）：4 条边框盒
+	# 操场跑道（红色矩形环 + 绿色球场内场）
 	var hw: float = tw * 0.45
 	var hd: float = td * 0.38
 	var track_c: float = td * 0.2
@@ -149,49 +184,61 @@ static func _build_school(root: Node3D, tw: float, td: float, cellf: float, base
 # ========== 医院：标准医院大楼（白墙 + 蓝窗带 + 红十字 + 屋顶停机坪） ==========
 
 static func _build_hospital(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
+	# 多色调色板（医院配色）：白墙主楼/浅蓝窗带/浅灰基座/红十字红/蓝白雨棚/灰停机坪
+	var wall_c := Color(0.94, 0.95, 0.96)     # 白墙
+	var window_c := Color(0.42, 0.62, 0.88)   # 浅蓝窗带
+	var sill_c := Color(0.72, 0.75, 0.8)      # 浅灰基座
+	var cross_red := Color(0.9, 0.16, 0.2)    # 红十字红
+	var canopy_c := Color(0.45, 0.62, 0.85)   # 蓝白雨棚
+	var pad_c := Color(0.45, 0.47, 0.52)      # 停机坪灰
 	var floors: int = 2 + mini(level, 3)  # 2~5 层
 	var body_h: float = cellf * (0.55 + 0.26 * floors)
-	# 主体 + 基座
-	_add_box(root, tw, body_h, td, base, Vector3(0, body_h * 0.5, 0))
-	_add_box(root, tw, cellf * 0.2, td, base.darkened(0.1), Vector3(0, cellf * 0.1, 0))
-	# 每层蓝色窗带（三面）
+	# 白墙主体 + 浅灰基座
+	_add_box(root, tw, body_h, td, wall_c, Vector3(0, body_h * 0.5, 0))
+	_add_box(root, tw, cellf * 0.2, td, sill_c, Vector3(0, cellf * 0.1, 0))
+	# 每层浅蓝窗带（三面）+ 白色窗台线
 	for f: int in range(floors):
 		var yy: float = cellf * (0.36 + 0.26 * f)
-		_add_box(root, tw * 0.78, cellf * 0.1, cellf * 0.04, Color(0.35, 0.55, 0.85),
+		_add_box(root, tw * 0.78, cellf * 0.1, cellf * 0.04, window_c,
 				Vector3(0, yy, td * 0.52))
-		_add_box(root, tw * 0.78, cellf * 0.1, cellf * 0.04, Color(0.35, 0.55, 0.85),
+		_add_box(root, tw * 0.78, cellf * 0.1, cellf * 0.04, window_c,
 				Vector3(0, yy, -td * 0.52))
-		_add_box(root, cellf * 0.04, cellf * 0.1, td * 0.6, Color(0.35, 0.55, 0.85),
+		_add_box(root, cellf * 0.04, cellf * 0.1, td * 0.6, window_c,
 				Vector3(tw * 0.52, yy, 0))
 	# 红十字（圆形白底 + 红字）
 	var cross_bg := _cyl(cellf * 0.14, cellf * 0.14, cellf * 0.03, Color(0.96, 0.96, 0.98))
 	cross_bg.rotation_degrees = Vector3(90, 0, 0)
 	cross_bg.position = Vector3(0, body_h * 0.62, td * 0.53)
 	root.add_child(cross_bg)
-	_add_box(root, cellf * 0.16, cellf * 0.045, cellf * 0.03, Color(0.9, 0.16, 0.2),
+	_add_box(root, cellf * 0.16, cellf * 0.045, cellf * 0.03, cross_red,
 			Vector3(0, body_h * 0.62, td * 0.55))
-	_add_box(root, cellf * 0.045, cellf * 0.16, cellf * 0.03, Color(0.9, 0.16, 0.2),
+	_add_box(root, cellf * 0.045, cellf * 0.16, cellf * 0.03, cross_red,
 			Vector3(0, body_h * 0.62, td * 0.55))
-	# 入口雨棚
-	_add_box(root, tw * 0.34, cellf * 0.05, cellf * 0.2, base.lightened(0.12),
+	# 入口蓝白雨棚 + 深蓝门
+	_add_box(root, tw * 0.34, cellf * 0.05, cellf * 0.2, canopy_c,
 			Vector3(0, cellf * 0.32, td * 0.52))
-	_add_box(root, tw * 0.2, cellf * 0.2, cellf * 0.05, Color(0.3, 0.35, 0.45),
+	_add_box(root, tw * 0.2, cellf * 0.2, cellf * 0.05, Color(0.3, 0.36, 0.5),
 			Vector3(0, cellf * 0.1, td * 0.53))
-	# 屋顶停机坪（灰圆盘 + H）
-	var pad := _cyl(cellf * 0.4, cellf * 0.4, cellf * 0.02, Color(0.5, 0.52, 0.58))
+	# 屋顶停机坪（深灰圆盘 + 红色 H）
+	var pad := _cyl(cellf * 0.4, cellf * 0.4, cellf * 0.02, pad_c)
 	pad.position = Vector3(0, body_h + cellf * 0.01, 0)
 	root.add_child(pad)
-	_add_box(root, cellf * 0.22, cellf * 0.02, cellf * 0.07, Color(0.95, 0.35, 0.3),
+	_add_box(root, cellf * 0.22, cellf * 0.02, cellf * 0.07, cross_red,
 			Vector3(0, body_h + cellf * 0.03, 0))
-	_add_box(root, cellf * 0.07, cellf * 0.02, cellf * 0.22, Color(0.95, 0.35, 0.3),
+	_add_box(root, cellf * 0.07, cellf * 0.02, cellf * 0.22, cross_red,
 			Vector3(0, body_h + cellf * 0.03, 0))
 
 
 # ========== 金融中心：分段收分摩天大楼（三重塔身 + 玻璃竖条 + 金色尖顶） ==========
 
 static func _build_finance(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
+	# 多色调色板（金融中心配色）：金褐裙楼/金塔身/深蓝玻璃竖条/深灰檐/亮金顶球
+	var podium_c := Color(0.38, 0.34, 0.3)    # 深褐金裙楼
+	var glass_dark := Color(0.25, 0.38, 0.62, 0.85)  # 深蓝玻璃幕
+	var ledge_c := Color(0.3, 0.3, 0.34)      # 深灰檐
+	var gold_c := base                          # 金主色
 	# 裙楼
-	_add_box(root, tw, cellf * 0.5, td, base.darkened(0.12), Vector3(0, cellf * 0.25, 0))
+	_add_box(root, tw, cellf * 0.5, td, podium_c, Vector3(0, cellf * 0.25, 0))
 	# 三阶塔身（下宽上窄阶梯收分，参考金茂大厦）
 	var seg_w: Array[float] = [0.86, 0.62, 0.4]
 	var seg_h: Array[float] = [cellf * (0.5 + 0.1 * level), cellf * (0.5 + 0.08 * level), cellf * (0.4 + 0.06 * level)]
@@ -199,22 +246,22 @@ static func _build_finance(root: Node3D, tw: float, td: float, cellf: float, bas
 	for s: int in range(3):
 		var sw: float = tw * seg_w[s]
 		var sd: float = td * seg_w[s]
-		_add_box(root, sw, seg_h[s], sd, base.darkened(0.05 * s), Vector3(0, y_pos + seg_h[s] * 0.5, 0))
-		# 每段玻璃竖条（正面）
+		_add_box(root, sw, seg_h[s], sd, gold_c.darkened(0.05 * s), Vector3(0, y_pos + seg_h[s] * 0.5, 0))
+		# 每段深蓝玻璃竖条（正面）
 		var cols: int = 3 + s * 2
 		for i: int in range(cols):
 			var gx: float = (i - (cols - 1) * 0.5) * (sw * 0.88 / cols)
-			_add_box(root, sw * 0.06, seg_h[s] * 0.9, cellf * 0.04, Color(0.75, 0.9, 1.0, 0.75),
+			_add_box(root, sw * 0.06, seg_h[s] * 0.9, cellf * 0.04, glass_dark,
 					Vector3(gx, y_pos + seg_h[s] * 0.5, sd * 0.51))
-		# 分段过渡檐
-		_add_box(root, sw * 1.06, cellf * 0.05, sd * 1.06, base.darkened(0.25),
+		# 分段过渡檐（深灰）
+		_add_box(root, sw * 1.06, cellf * 0.05, sd * 1.06, ledge_c,
 				Vector3(0, y_pos + seg_h[s], 0))
 		y_pos += seg_h[s]
-	# 顶部金色尖顶 + 球
-	var spire := _cone(tw * 0.1, cellf * 0.5, base.lightened(0.4))
+	# 顶部金色尖顶 + 金球
+	var spire := _cone(tw * 0.1, cellf * 0.5, gold_c.lightened(0.4))
 	spire.position = Vector3(0, y_pos + cellf * 0.25, 0)
 	root.add_child(spire)
-	var orb := _sphere(cellf * 0.1, base.lightened(0.55))
+	var orb := _sphere(cellf * 0.1, gold_c.lightened(0.55))
 	orb.position = Vector3(0, y_pos + cellf * 0.55, 0)
 	root.add_child(orb)
 
