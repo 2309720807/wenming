@@ -150,14 +150,14 @@ expand_mode = 1
 stretch_mode = 1
 
 [node name="Stars" type="GPUParticles2D" parent="." unique_id=1783772133]
-amount = 160
+amount = 260
 texture = SubResource("GradientTexture2D_star_tex")
 lifetime = 10.0
 visibility_rect = Rect2(-100, -100, 2120, 1280)
 process_material = ExtResource("4_2pfwv")
 
 [node name="BrightStars" type="GPUParticles2D" parent="." unique_id=1745905207]
-amount = 20
+amount = 32
 texture = SubResource("GradientTexture2D_star_bright_tex")
 lifetime = 6.0
 visibility_rect = Rect2(-100, -100, 2120, 1280)

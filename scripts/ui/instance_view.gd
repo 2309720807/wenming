@@ -34,8 +34,16 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	# 背景
-	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.04, 0.1, 1.0)
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([Color(0.01, 0.03, 0.09, 1), Color(0.05, 0.1, 0.22, 1), Color(0.01, 0.02, 0.07, 1)])
+	var gtex := GradientTexture2D.new()
+	gtex.gradient = grad
+	gtex.fill_from = Vector2(0.5, 0)
+	gtex.fill_to = Vector2(0.5, 1)
+	var bg := TextureRect.new()
+	bg.texture = gtex
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
