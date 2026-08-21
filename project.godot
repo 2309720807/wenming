@@ -22,9 +22,9 @@ TimeManager="*res://scripts/data/time_manager.gd"
 BuildingSystem="*res://scripts/game/building_system.gd"
 WindowManager="*res://scripts/data/window_manager.gd"
 GiftCodeManager="*res://scripts/data/gift_code_manager.gd"
-_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 MilitarySystem="*res://scripts/data/military_system.gd"
 SaveManager="*res://scripts/data/save_manager.gd"
+_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]
 

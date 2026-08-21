@@ -47,9 +47,16 @@ func _build_ui() -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
+	# 顶部资源栏（全局资源可见）
+	var res_bar := ResourceBar.new()
+	res_bar.name = "ResourceBar"
+	res_bar.position = Vector2(0, 6)
+	res_bar.size = Vector2(1280, 44)
+	add_child(res_bar)
+
 	# 顶栏
 	var top := HBoxContainer.new()
-	top.position = Vector2(16, 12)
+	top.position = Vector2(16, 58)
 	top.custom_minimum_size = Vector2(1248, 46)
 	top.add_theme_constant_override("separation", 12)
 	add_child(top)
@@ -80,8 +87,8 @@ func _build_ui() -> void:
 
 	# 主体：左出兵面板 + 中央战场
 	var body := HBoxContainer.new()
-	body.position = Vector2(16, 70)
-	body.custom_minimum_size = Vector2(1248, 560)
+	body.position = Vector2(16, 112)
+	body.custom_minimum_size = Vector2(1248, 540)
 	body.add_theme_constant_override("separation", 14)
 	add_child(body)
 

@@ -48,9 +48,16 @@ func _build_ui() -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
+	# 顶部资源栏（全局资源可见，同主界面顶栏信息）
+	var res_bar := ResourceBar.new()
+	res_bar.name = "ResourceBar"
+	res_bar.position = Vector2(0, 6)
+	res_bar.size = Vector2(1280, 44)
+	add_child(res_bar)
+
 	# 顶栏
 	var top := HBoxContainer.new()
-	top.position = Vector2(16, 12)
+	top.position = Vector2(16, 58)
 	top.custom_minimum_size = Vector2(1248, 46)
 	top.add_theme_constant_override("separation", 12)
 	add_child(top)
@@ -88,8 +95,8 @@ func _build_ui() -> void:
 
 	# 内容区
 	var content := HBoxContainer.new()
-	content.position = Vector2(16, 70)
-	content.custom_minimum_size = Vector2(1248, 560)
+	content.position = Vector2(16, 112)
+	content.custom_minimum_size = Vector2(1248, 540)
 	content.add_theme_constant_override("separation", 14)
 	add_child(content)
 

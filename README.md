@@ -58,6 +58,7 @@
 
 - **军事与防御系统**（`scenes/ui/military/military_view.tscn` + `scripts/ui/military_view.gd` + `scripts/data/military_system.gd` Autoload）：
   - 主界面"军事与防御"按钮进入，右上角军事/防御切换，默认军事页
+  - **所有界面顶部显示资源栏**（`scripts/ui/resource_bar.gd` 组件：玩家/时间/金币/人口/幸福/科技/文化）
   - 军事页消耗金币+科技点制造设施（炮塔/城墙/兵营/防空/军械库/避难所，`data/military.json`），入库存
   - 防御页基地网格建设：从库存部署设施（右键拆除返还 50%）、扩大基地（+2×2 递增费用）
   - 军事规模达标后周期性人机攻城（击退得奖励，战败损失设施），军事数据随存档保存
@@ -70,6 +71,7 @@
 - **设置系统**（`scenes/ui/settings_menu.tscn` + `scripts/ui/settings_menu.gd`）：
   - 底栏右下角"设置"按钮，打开居中设置面板
   - **游戏分辨率**：下拉选择 1280×720 / 1600×900 / 1920×1080 / 2560×1440，选择即应用（`WindowManager`）
+  - **界面缩放**：滑块 80%~150% 任意缩放界面，自动记忆（`user://settings.cfg`），下次启动恢复
   - **礼包码**：输入兑换金币奖励，数据配置于 `data/gift_codes.json`，防重复兑换（`GiftCodeManager` Autoload）
   - **退出游戏**：确认对话框后退出
   - **开发者调试台**：输入礼包码 `tiaoshitai`（大小写不敏感）开启，可调倍速（1x-10x）/暂停、GameState 全部数值 +/- 调节、游戏资产数据浏览、**离线挂机模拟**（详见 AGENTS.md 3.2）

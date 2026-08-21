@@ -174,6 +174,44 @@ theme_override_fonts/font = ExtResource("4_font_serif")
 theme_override_font_sizes/font_size = 12
 text = "切换后窗口立即等比放大，界面不错位"
 
+[node name="SectionZoom" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.75, 1, 0.9)
+theme_override_fonts/font = ExtResource("3_font_bold")
+theme_override_font_sizes/font_size = 16
+text = "界面缩放"
+
+[node name="ZoomRow" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ZoomSlider" type="HSlider" parent="Margin/VBox/ZoomRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.8
+max_value = 1.5
+step = 0.05
+value = 1.0
+
+[node name="ZoomValueLabel" type="Label" parent="Margin/VBox/ZoomRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.9, 1, 1)
+theme_override_fonts/font = ExtResource("3_font_bold")
+theme_override_font_sizes/font_size = 15
+text = "100%"
+horizontal_alignment = 1
+
+[node name="ZoomHint" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.6, 0.75, 0.7)
+theme_override_fonts/font = ExtResource("4_font_serif")
+theme_override_font_sizes/font_size = 12
+text = "任意缩放界面比例，自动记忆，下次启动恢复"
+
 [node name="Sep1" type="HSeparator" parent="Margin/VBox"]
 layout_mode = 2
 

@@ -8,6 +8,9 @@ extends Node
 ## 场景根脚本在 _ready 中调用 setup_scale_root(self) 注册。
 
 const DESIGN_SIZE: Vector2 = Vector2(1280, 720)
+const ZOOM_MIN: float = 0.8
+const ZOOM_MAX: float = 1.5
+const SETTINGS_PATH: String = "user://settings.cfg"  # 界面偏好记忆（缩放比例等）
 
 ## 可选分辨率列表（设置面板使用）
 const RESOLUTIONS: Array[Vector2i] = [
@@ -19,12 +22,33 @@ const RESOLUTIONS: Array[Vector2i] = [
 
 var _scale_root: Control = null
 var _window: Window = null
+var zoom_scale: float = 1.0  # 界面任意缩放比例（0.8~1.5，随窗口等比缩放叠加）
 
 
 func _ready() -> void:
 	_window = get_window()
 	_window.size_changed.connect(_on_window_size_changed)
+	_load_settings()
 	_on_window_size_changed()
+
+
+## 设置界面缩放比例并记忆（user://settings.cfg，下次启动恢复）
+func set_zoom_scale(value: float) -> void:
+	zoom_scale = clampf(value, ZOOM_MIN, ZOOM_MAX)
+	_save_settings()
+	_apply_scale()
+
+
+func _load_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		zoom_scale = clampf(float(cfg.get_value("display", "zoom_scale", 1.0)), ZOOM_MIN, ZOOM_MAX)
+
+
+func _save_settings() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("display", "zoom_scale", zoom_scale)
+	cfg.save(SETTINGS_PATH)
 
 
 ## 场景根 Control 注册（登录/主界面 _ready 调用）
@@ -33,10 +57,11 @@ func setup_scale_root(root: Control) -> void:
 	_apply_scale()
 
 
-## 当前等比缩放系数（子窗口如确认对话框按此缩放内容）
+## 当前等比缩放系数（含用户界面缩放比例；子窗口如确认对话框按此缩放内容）
 func current_scale_factor() -> float:
 	var win_size: Vector2 = Vector2(_window.size)
-	return maxf(minf(win_size.x / DESIGN_SIZE.x, win_size.y / DESIGN_SIZE.y), 0.0)
+	var factor: float = minf(win_size.x / DESIGN_SIZE.x, win_size.y / DESIGN_SIZE.y)
+	return maxf(factor * zoom_scale, 0.0)
 
 
 func current_resolution() -> Vector2i:
@@ -72,6 +97,8 @@ func _apply_scale() -> void:
 	var factor: float = minf(win_size.x / DESIGN_SIZE.x, win_size.y / DESIGN_SIZE.y)
 	if factor <= 0.0:
 		factor = 1.0
+	# 用户界面缩放比例叠加（任意缩放，记忆于 settings.cfg）
+	factor *= zoom_scale
 	# 锚点改为中心点 + 固定设计尺寸，避免全屏锚定在窗口变化时覆盖 size
 	_scale_root.set_anchors_preset(Control.PRESET_CENTER)
 	_scale_root.size = DESIGN_SIZE

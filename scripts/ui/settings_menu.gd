@@ -16,6 +16,8 @@ signal role_switched(message: String)  # 切换角色完成（主界面消息日
 @onready var btn_exit: Button = %BtnExit
 @onready var btn_close: Button = %BtnClose
 @onready var confirm_dialog: ConfirmationDialog = %ConfirmDialog
+@onready var zoom_slider: HSlider = %ZoomSlider
+@onready var zoom_value_label: Label = %ZoomValueLabel
 @onready var btn_save: Button = %BtnSave
 @onready var btn_switch_role: Button = %BtnSwitchRole
 @onready var save_result_label: Label = %SaveResultLabel
@@ -35,6 +37,8 @@ func _ready() -> void:
 	confirm_dialog.confirmed.connect(_on_confirm_exit)
 	btn_save.pressed.connect(_on_save_pressed)
 	btn_switch_role.pressed.connect(_on_switch_role_pressed)
+	# 界面任意缩放（自动记忆，见 WindowManager.set_zoom_scale）
+	zoom_slider.value_changed.connect(_on_zoom_changed)
 	# 切换角色列表（复用 SaveList 组件：进入/删除/刷新）
 	_save_list = SaveList.new()
 	_save_list.name = "SaveList"
@@ -47,8 +51,16 @@ func open() -> void:
 	_fill_resolutions()
 	gift_result_label.text = ""
 	gift_code_input.clear()
+	zoom_slider.set_value_no_signal(WindowManager.zoom_scale)
+	zoom_value_label.text = "%d%%" % int(WindowManager.zoom_scale * 100.0)
 	show()
 	UiAnim.panel_enter(self)  # 面板入场动画（纯视觉）
+
+
+func _on_zoom_changed(value: float) -> void:
+	## 界面任意缩放比例：实时生效并记忆（user://settings.cfg）
+	WindowManager.set_zoom_scale(value)
+	zoom_value_label.text = "%d%%" % int(value * 100.0)
 
 
 func close() -> void:
