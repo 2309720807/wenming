@@ -352,8 +352,10 @@ func _spawn_building(cell: Vector2i, item_id: String) -> void:
 		return
 	var key: String = "%d,%d" % [cell.x, cell.y]
 	var p: Dictionary = BuildingSystem.placed.get(key, {})
-	var node: Node3D = _make_building_node(item, p, cell)
+	var node: Node3D = BuildingMeshes.build(item, int(p.get("level", 1)), _cell_size_3d())
 	node.name = "B_" + key
+	node.position = Vector3((cell.x + float(item.get("width", 1)) * 0.5) * _cell_size_3d(),
+			0.0, (cell.y + float(item.get("height", 1)) * 0.5) * _cell_size_3d())
 	_object_root.add_child(node)
 	# 等级徽章（Label3D 广告牌，悬浮建筑上方，随缩放自适应字号）
 	var badge := Label3D.new()
@@ -378,120 +380,7 @@ func _spawn_building(cell: Vector2i, item_id: String) -> void:
 		_set_node_transparency(node, 0.6)
 
 
-## 按建筑类型生成低多边形仿真模型（数据驱动 colors/bonuses）
-func _make_building_node(item: Dictionary, p: Dictionary, cell: Vector2i) -> Node3D:
-	var cellf: float = _cell_size_3d()
-	var w: int = int(item.get("width", 1))
-	var h: int = int(item.get("height", 1))
-	var base: Color = Color(item.get("color", "#6a7fa8"))
-	var root := Node3D.new()
-	root.position = Vector3((cell.x + w * 0.5) * cellf, 0.0, (cell.y + h * 0.5) * cellf)
-	var total_w: float = w * cellf * 0.86
-	var total_d: float = h * cellf * 0.86
-	var body_h: float = cellf * (0.55 + 0.12 * float(int(item.get("cost", 50)) % 3))
-	match item.get("id", ""):
-		"finance":
-			# 金融中心：高层 + 尖顶塔冠 + 金色
-			body_h = cellf * 1.1
-			_add_box(root, total_w, body_h, total_d, base, Vector3(0, body_h * 0.5, 0))
-			var spire := MeshInstance3D.new()
-			var cone := CylinderMesh.new()
-			cone.top_radius = 0.0
-			cone.bottom_radius = total_w * 0.22
-			cone.height = cellf * 0.5
-			spire.mesh = cone
-			spire.position = Vector3(0, body_h + cellf * 0.25, 0)
-			spire.material_override = _make_std(base.lightened(0.35))
-			root.add_child(spire)
-			_add_box(root, total_w * 0.3, cellf * 0.12, total_d * 0.3, base.lightened(0.4),
-					Vector3(-total_w * 0.28, body_h + cellf * 0.06, 0))
-		"residence":
-			# 住宅：主体 + 斜屋顶
-			_add_box(root, total_w, body_h, total_d, base, Vector3(0, body_h * 0.5, 0))
-			var roof := MeshInstance3D.new()
-			var prism := PrismMesh.new()
-			prism.size = Vector3(total_w * 1.02, cellf * 0.4, total_d * 1.02)
-			roof.mesh = prism
-			roof.position = Vector3(0, body_h + cellf * 0.2, 0)
-			roof.rotation_degrees = Vector3(0, 0, 90)
-			roof.material_override = _make_std(base.darkened(0.25))
-			root.add_child(roof)
-			# 烟囱
-			_add_box(root, cellf * 0.14, cellf * 0.22, cellf * 0.14, Color(0.5, 0.4, 0.32),
-					Vector3(total_w * 0.28, body_h + cellf * 0.4, 0))
-		"office":
-			# 办公楼：玻璃幕墙（半透明）+ 高光条
-			_add_box(root, total_w, cellf * 0.9, total_d, base, Vector3(0, cellf * 0.45, 0))
-			var glass := MeshInstance3D.new()
-			var glass_box := BoxMesh.new()
-			glass_box.size = Vector3(total_w * 0.94, cellf * 0.78, total_d * 0.94)
-			glass.mesh = glass_box
-			glass.position = Vector3(0, cellf * 0.45, 0)
-			var gm := StandardMaterial3D.new()
-			gm.albedo_color = Color(0.6, 0.85, 1.0, 0.55)
-			gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			gm.metallic = 0.5
-			gm.roughness = 0.1
-			glass.material_override = gm
-			root.add_child(glass)
-			_add_box(root, total_w * 1.04, cellf * 0.06, total_d * 1.04, Color(0.85, 0.95, 1.0),
-					Vector3(0, cellf * 0.94, 0))
-		"school":
-			# 学校：主体 + 旗杆 + 旗帜
-			_add_box(root, total_w, body_h, total_d, base, Vector3(0, body_h * 0.5, 0))
-			var pole := MeshInstance3D.new()
-			var pole_mesh := CylinderMesh.new()
-			pole_mesh.top_radius = cellf * 0.02
-			pole_mesh.bottom_radius = cellf * 0.03
-			pole_mesh.height = cellf * 0.6
-			pole.mesh = pole_mesh
-			pole.position = Vector3(total_w * 0.38, body_h + cellf * 0.3, 0)
-			pole.material_override = _make_std(Color(0.9, 0.9, 0.95))
-			root.add_child(pole)
-			_add_box(root, cellf * 0.3, cellf * 0.05, cellf * 0.18, Color(0.85, 0.4, 0.5),
-					Vector3(total_w * 0.38 + cellf * 0.15, body_h + cellf * 0.55, 0))
-		"hospital":
-			# 医院：主体 + 红十字
-			_add_box(root, total_w, body_h, total_d, base, Vector3(0, body_h * 0.5, 0))
-			_add_box(root, cellf * 0.42, cellf * 0.12, cellf * 0.12, Color(0.95, 0.32, 0.34),
-					Vector3(0, body_h + cellf * 0.12, 0))
-			_add_box(root, cellf * 0.12, cellf * 0.42, cellf * 0.12, Color(0.95, 0.32, 0.34),
-					Vector3(0, body_h + cellf * 0.12, 0))
-		"garden":
-			# 花园：矮基座 + 绿植球
-			_add_box(root, total_w, cellf * 0.12, total_d, Color(0.35, 0.45, 0.3), Vector3(0, cellf * 0.06, 0))
-			for i: int in range(4):
-				var bush := MeshInstance3D.new()
-				var sphere := SphereMesh.new()
-				sphere.radius = cellf * 0.12
-				sphere.height = cellf * 0.24
-				bush.mesh = sphere
-				bush.position = Vector3((i % 2) * cellf * 0.3 - cellf * 0.15, cellf * 0.24, (i / 2) * cellf * 0.3 - cellf * 0.15)
-				bush.material_override = _make_std(Color(0.25, 0.6, 0.3))
-				root.add_child(bush)
-		"fountain":
-			# 喷泉：基座 + 水柱
-			_add_box(root, total_w, cellf * 0.2, total_d, Color(0.6, 0.65, 0.7), Vector3(0, cellf * 0.1, 0))
-			var jet := MeshInstance3D.new()
-			var cyl := CylinderMesh.new()
-			cyl.top_radius = cellf * 0.08
-			cyl.bottom_radius = cellf * 0.08
-			cyl.height = cellf * 0.4
-			jet.mesh = cyl
-			jet.position = Vector3(0, cellf * 0.35, 0)
-			var wm := StandardMaterial3D.new()
-			wm.albedo_color = Color(0.55, 0.85, 1.0, 0.8)
-			wm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			jet.material_override = wm
-			root.add_child(jet)
-		"statue":
-			# 雕像：基座 + 人形柱
-			_add_box(root, total_w, cellf * 0.15, total_d, Color(0.55, 0.55, 0.6), Vector3(0, cellf * 0.075, 0))
-			_add_box(root, cellf * 0.2, cellf * 0.5, cellf * 0.2, Color(0.75, 0.72, 0.65), Vector3(0, cellf * 0.45, 0))
-		_:
-			# 通用建筑：简单主体
-			_add_box(root, total_w, body_h, total_d, base, Vector3(0, body_h * 0.5, 0))
-	return root
+## 建筑模型生成已抽取至独立模块 BuildingMeshes（真实建筑模板程序化重构）
 
 
 func _add_box(parent: Node3D, sx: float, sy: float, sz: float, color: Color, pos: Vector3) -> void:
