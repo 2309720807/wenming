@@ -12,12 +12,21 @@ signal drag_place_requested(cell: Vector2i)  # 左键拖动连续建造
 signal demolition_requested(rect: Rect2i)   # 批量拆除框选完成
 signal demolish_mode_changed(on: bool)      # 拆除模式开关
 
-const ZOOM_MIN: float = 0.6
-const ZOOM_MAX: float = 1.8
+const ZOOM_MIN: float = 0.4
+const ZOOM_MAX: float = 3.0
+const PAN_MARGIN: float = 24.0  # 平移边界：地图至少保留该边距在视口内
+const PAN_DRAG_THRESHOLD: float = 6.0  # 左键按住超过该像素距离视为平移而非单击
 
 var zoom: float = 1.0
 var _last_drag_cell: Vector2i = Vector2i(-1, -1)
 var _mouse_left_down: bool = false  # 本地记录左键状态（拖动连续建造，兼容事件无 button_mask 的情况）
+
+# === 地图平移（未建设时左键拖动查看）===
+var _pan: Vector2 = Vector2.ZERO  # 视口平移偏移（叠加在网格原点上）
+var _view_dragging: bool = false  # 正在进行地图平移拖动
+var _click_armed: bool = false    # 左键按下待判定单击/拖动（未建设时）
+var _press_pos: Vector2 = Vector2.ZERO  # 按下位置（用于区分单击与平移拖动）
+var _last_mouse_pos: Vector2 = Vector2.ZERO  # 上次鼠标位置（平移用位置差计算，兼容无 relative 的合成事件）
 
 # === 批量拆除框选 ===
 var demolish_mode: bool = false
@@ -43,8 +52,11 @@ const PEOPLE_MAX: int = 24
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# 地图只在地图显示区域内渲染，超出部分裁剪，避免扩大后溢出覆盖两侧菜单/信息面板
+	clip_contents = true
 	# 恢复地图缩放比例（跨场景/跨启动记忆，见 BuildingSystem.map_zoom）
 	zoom = BuildingSystem.map_zoom
+	_clamp_pan()
 	# 建造/完工/升级/拆除特效粒子（数据层信号驱动）
 	BuildingSystem.building_placed.connect(func(cell: Vector2i, _id: String) -> void:
 		_spawn_build_particles(cell, "place"))
@@ -100,26 +112,61 @@ func _gui_input(event: InputEvent) -> void:
 			set_demolish_mode(false)
 			return
 	if event is InputEventMouseMotion:
+		# 平移拖动：地图随鼠标移动（未建设时的左键拖动查看）
+		if _view_dragging:
+			# 用位置差而非 event.relative：合成/模拟鼠标事件可能不带 relative
+			_pan += event.position - _last_mouse_pos
+			_last_mouse_pos = event.position
+			_clamp_pan()
+			queue_redraw()
+			return
 		var cell: Vector2i = _pos_to_cell(event.position)
 		if cell != hover_cell:
 			hover_cell = cell
 			hover_changed.emit(cell)
 			queue_redraw()
-		# 左键按住拖动：连续建造（修复：motion 分支需合并处理，elif 会被 hover 分支吞掉）
-		if _mouse_left_down:
+		_last_mouse_pos = event.position
+		# 左键按住拖动：连续建造（仅选中建筑时；修复：motion 分支需合并处理，elif 会被 hover 分支吞掉）
+		if _mouse_left_down and not preview_item.is_empty():
 			var drag_cell: Vector2i = _pos_to_cell(event.position)
 			if drag_cell.x >= 0 and drag_cell != _last_drag_cell:
 				_last_drag_cell = drag_cell
 				drag_place_requested.emit(drag_cell)
+		# 未建设时按住左键超过阈值：切换为平移地图
+		elif _mouse_left_down and _click_armed and not _view_dragging \
+				and event.position.distance_to(_press_pos) > PAN_DRAG_THRESHOLD:
+			_view_dragging = true
+			_click_armed = false
+			_last_mouse_pos = event.position  # 平移起点，避免首帧跳变
+			hover_cell = Vector2i(-1, -1)
+			hover_changed.emit(hover_cell)  # 平移中隐藏悬停信息
 		return
 	elif event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT:
 		_mouse_left_down = event.pressed
 		if event.pressed:
+			_press_pos = event.position
+			_last_mouse_pos = event.position
 			_last_drag_cell = Vector2i(-1, -1)
-			cell_clicked.emit(_pos_to_cell(event.position))
+			if preview_item.is_empty():
+				# 未建设：按下不立即触发点击，抬起时按是否拖动判定单击/平移
+				_click_armed = true
+			else:
+				cell_clicked.emit(_pos_to_cell(event.position))
 		else:
 			_last_drag_cell = Vector2i(-1, -1)
+			if _view_dragging:
+				# 平移结束：立即恢复悬停信息
+				_view_dragging = false
+				var end_cell: Vector2i = _pos_to_cell(event.position)
+				if end_cell != hover_cell:
+					hover_cell = end_cell
+					hover_changed.emit(end_cell)
+			elif _click_armed:
+				# 未发生拖动：视为单击
+				_click_armed = false
+				cell_clicked.emit(_pos_to_cell(event.position))
+			_click_armed = false
 	elif event is InputEventMouseButton \
 			and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# 右键取消当前预选建造
@@ -129,18 +176,12 @@ func _gui_input(event: InputEvent) -> void:
 			queue_redraw()
 	elif event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-		# 滚轮放大（以网格中心为锚点）
-		set_zoom(zoom * 1.12)
+		# 滚轮放大（以光标为锚点，缩放范围 0.4x ~ 3.0x）
+		_zoom_at(event.position, 1.12)
 	elif event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 		# 滚轮缩小
-		set_zoom(zoom / 1.12)
-	elif event is InputEventMouseMotion and _mouse_left_down:
-		# 左键按住拖动：连续建造（跳过已触发过的格子）
-		var drag_cell: Vector2i = _pos_to_cell(event.position)
-		if drag_cell.x >= 0 and drag_cell != _last_drag_cell:
-			_last_drag_cell = drag_cell
-			drag_place_requested.emit(drag_cell)
+		_zoom_at(event.position, 1.0 / 1.12)
 
 
 # === 绘制 ===
@@ -566,17 +607,58 @@ func _selection_rect() -> Rect2i:
 
 
 func set_zoom(new_zoom: float) -> void:
-	## 滚轮缩放地图（0.6x ~ 1.8x），网格以中央区域中心为锚点缩放；
+	## 滚轮缩放地图（0.4x ~ 3.0x），网格以中央区域中心为锚点缩放；
 	## 同步 BuildingSystem.map_zoom 实现跨场景/跨启动记忆
 	zoom = clampf(new_zoom, ZOOM_MIN, ZOOM_MAX)
 	BuildingSystem.set_map_zoom(zoom)
+	_clamp_pan()
 	queue_redraw()
 
 
-func _grid_origin() -> Vector2:
-	# 网格居中填满中央区域（两侧留少量边距，底部给信息窗留空间）
+func _zoom_at(cursor: Vector2, factor: float) -> void:
+	## 以光标为锚点缩放：光标下的地图点缩放前后位置保持不变
+	var new_zoom: float = clampf(zoom * factor, ZOOM_MIN, ZOOM_MAX)
+	if is_equal_approx(new_zoom, zoom):
+		return
+	var rel: Vector2 = (cursor - _grid_origin()) / zoom  # 光标相对网格原点（zoom=1 像素单位）
+	zoom = new_zoom
+	BuildingSystem.set_map_zoom(zoom)
+	_pan = cursor - _base_origin() - rel * zoom
+	_clamp_pan()
+	queue_redraw()
+
+
+func _base_origin() -> Vector2:
+	# 无平移时的网格居中位置（缩放以中央区域中心为锚）
 	var grid_px: Vector2 = Vector2(BuildingSystem.GRID_W, BuildingSystem.GRID_H) * _cell()
 	return Vector2((size.x - grid_px.x) / 2.0, 30.0)
+
+
+func _grid_origin() -> Vector2:
+	# 网格居中 + 平移偏移（左键拖动查看）
+	return _base_origin() + _pan
+
+
+func _clamp_pan() -> void:
+	# 地图比视口小时锁定居中（拖不出空白）；比视口大时限制至少 PAN_MARGIN 可见，
+	# 保证地图始终只在地图显示区域内，不会溢出覆盖两侧菜单/信息面板
+	var grid_px: Vector2 = Vector2(BuildingSystem.GRID_W, BuildingSystem.GRID_H) * _cell()
+	var base: Vector2 = _base_origin()
+	if grid_px.x + PAN_MARGIN * 2.0 <= size.x:
+		_pan.x = 0.0
+	else:
+		_pan.x = clampf(_pan.x, PAN_MARGIN - base.x - grid_px.x, size.x - PAN_MARGIN - base.x)
+	if grid_px.y + PAN_MARGIN * 2.0 <= size.y:
+		_pan.y = 0.0
+	else:
+		_pan.y = clampf(_pan.y, PAN_MARGIN - base.y - grid_px.y, size.y - PAN_MARGIN - base.y)
+
+
+func _notification(what: int) -> void:
+	# 窗口尺寸变化后重新约束平移范围
+	if what == NOTIFICATION_RESIZED:
+		_clamp_pan()
+		queue_redraw()
 
 
 func _pos_to_cell(pos: Vector2) -> Vector2i:

@@ -42,8 +42,8 @@ var _actions: BuildingActions
 
 # 地图滚轮缩放比例（跨场景保持 + settings.cfg 跨启动记忆，见 set_map_zoom）
 var map_zoom: float = 1.0
-const MAP_ZOOM_MIN: float = 0.6
-const MAP_ZOOM_MAX: float = 1.8
+const MAP_ZOOM_MIN: float = 0.4
+const MAP_ZOOM_MAX: float = 3.0
 const SETTINGS_PATH: String = "user://settings.cfg"
 
 

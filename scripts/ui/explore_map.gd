@@ -4,11 +4,10 @@ extends Control
 ## 地图与探索界面：左侧建筑菜单 + 中央网格建设区
 ## 设计依据：docs/design/game_design.md 3.7
 ## 界面专属组件已合并为内部类（避免过度拆分，见 AGENTS.md 3.1）：
-##   BuildingActionPanel（操作面板）、BuildingInfo（悬停文案）、BuildingFeedback（建造反馈）、MapSummary（建筑产出总览）
+##   BuildingActionPanel（操作面板）、BuildingInfo（悬停文案）、BuildingFeedback（建造反馈）、MapSummary（建筑产出总览）、MapExpandPanel（扩大地图购买面板）
 
 # 建筑产出总览面板定位（网格下方空白区，设计坐标系 1280×720）
 const SUMMARY_RECT: Rect2 = Rect2(260, 596, 1010, 84)
-const EXPAND_COST_BASE: int = 500  # 扩大地图基础费用（每次扩大递增 500）
 const FONT_BTN: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
 
 @onready var menu: BuildingMenu = %MenuList
@@ -24,6 +23,7 @@ const FONT_BTN: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
 var selected_item: Dictionary = {}
 var _action_ctrl: BuildingActionPanel
 var _feedback: BuildingFeedback
+var _expand_panel: MapExpandPanel  # 扩大地图购买面板（点"地图"按钮弹出）
 
 
 func _ready() -> void:
@@ -38,6 +38,12 @@ func _ready() -> void:
 	info_hint.text = BuildingInfo.HINT_BASE
 	_add_summary_panel()
 	_build_top_buttons()
+	# 扩大地图购买面板（点"地图"按钮弹出，先选择档位再确认购买）
+	_expand_panel = MapExpandPanel.new()
+	_expand_panel.name = "MapExpandPanel"
+	add_child(_expand_panel)
+	_expand_panel.expand_requested.connect(_on_expand_requested)
+	_expand_panel.hide()
 
 
 func _add_summary_panel() -> void:
@@ -122,16 +128,23 @@ func _make_top_btn_style(bg: Color) -> StyleBoxFlat:
 
 
 func _on_map_expand_pressed() -> void:
-	# 每次扩大 +2 列 +2 行；费用随扩大次数递增（500/1000/1500...）
-	var expansions: int = maxi(0, (BuildingSystem.GRID_W - BuildingSystem.BuildingData.DEFAULT_GRID_W) / 2)
-	var cost: int = EXPAND_COST_BASE * (expansions + 1)
+	# 点击"地图"：打开扩大地图购买面板（选择档位确认后购买，不直接扣费）
+	_expand_panel.open()
+
+
+func _on_expand_requested(steps: int) -> void:
+	# 面板确认购买：按当前扩大次数计算逐级递增费用，扣费并扩大地图（每级 +2 列 +2 行）
+	var cost: int = MapExpandPanel.expand_cost(steps)
 	if GameState.gold < cost:
 		info_hint.text = "金币不足：扩大地图需要 %d 金币（当前 %d）" % [cost, int(GameState.gold)]
+		_expand_panel.refresh()
 		return
 	GameState.add_gold(-cost)
-	BuildingSystem.expand_grid(2, 2)
-	info_hint.text = "地图已扩大至 %d×%d（花费 %d 金币），可用滚轮缩放" % [
+	BuildingSystem.expand_grid(steps * 2, steps * 2)
+	info_hint.text = "地图已扩大至 %d×%d（花费 %d 金币），可用滚轮缩放查看" % [
 		BuildingSystem.GRID_W, BuildingSystem.GRID_H, cost]
+	_expand_panel.refresh()
+	grid_view.queue_redraw()
 
 
 func _on_explore_pressed() -> void:
@@ -569,6 +582,172 @@ class MapSummary:
 		if is_float:
 			return "+%.1f" % value
 		return "+%d" % int(value)
+# === 扩大地图购买面板（原"地图"按钮直接扩图，现改为弹窗选购）===
+class MapExpandPanel:
+	extends Control
+
+	## 扩大地图购买面板：点击"🗺 地图"按钮弹出，
+	## 展示当前地图尺寸/金币与多档扩大方案，确认后由 explore_map 执行购买。
+	## 每次扩大 +2 列 +2 行，费用随扩大次数逐级递增（500/1000/1500…）。
+
+	const EXPAND_COST_BASE: int = 500
+	const EXPAND_TIERS: Array[int] = [1, 2, 3]  # 可选档位：一次扩大 1/2/3 级（每级 +2 列 +2 行）
+	const FONT_BOLD: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
+	const FONT_SERIF: Font = preload("res://assets/fonts/SourceHanSerifCN-Regular.otf")
+
+	signal expand_requested(steps: int)
+
+	var _panel: PanelContainer
+	var _info: Label
+	var _gold: Label
+	var _hint: Label
+	var _tier_buttons: Array[Button] = []
+	var _tier_steps: Array[int] = []
+
+
+	func _init() -> void:
+		# 全屏遮罩层：半透明压暗背景并阻止点击穿透到地图
+		set_anchors_preset(Control.PRESET_FULL_RECT)
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		var dim := ColorRect.new()
+		dim.color = Color(0, 0, 0, 0.55)
+		dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+		dim.mouse_filter = Control.MOUSE_FILTER_STOP
+		add_child(dim)
+		# 面板本体（居中）
+		_panel = PanelContainer.new()
+		_panel.set_anchors_preset(Control.PRESET_CENTER)
+		_panel.custom_minimum_size = Vector2(460, 0)
+		_panel.add_theme_stylebox_override("panel", _make_panel_style())
+		add_child(_panel)
+		var vbox := VBoxContainer.new()
+		vbox.add_theme_constant_override("separation", 10)
+		vbox.add_theme_constant_override("margin_left", 24)
+		vbox.add_theme_constant_override("margin_top", 20)
+		vbox.add_theme_constant_override("margin_right", 24)
+		vbox.add_theme_constant_override("margin_bottom", 20)
+		_panel.add_child(vbox)
+		# 标题
+		var title := Label.new()
+		title.text = "🗺 扩大地图"
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		title.add_theme_color_override("font_color", Color(1, 0.88, 0.45, 1))
+		title.add_theme_font_override("font", FONT_BOLD)
+		title.add_theme_font_size_override("font_size", 22)
+		vbox.add_child(title)
+		# 当前地图尺寸与规则说明
+		_info = Label.new()
+		_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_info.add_theme_color_override("font_color", Color(0.8, 0.87, 1, 0.95))
+		_info.add_theme_font_override("font", FONT_SERIF)
+		_info.add_theme_font_size_override("font_size", 13)
+		# 注意：不开 autowrap——容器最小尺寸计算时标签宽度为 0，逐字换行会让面板最小高度爆炸
+		_info.autowrap_mode = TextServer.AUTOWRAP_OFF
+		vbox.add_child(_info)
+		# 当前金币
+		_gold = Label.new()
+		_gold.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_gold.add_theme_color_override("font_color", Color(1, 0.85, 0.4, 1))
+		_gold.add_theme_font_override("font", FONT_BOLD)
+		_gold.add_theme_font_size_override("font_size", 15)
+		vbox.add_child(_gold)
+		vbox.add_child(HSeparator.new())
+		# 档位按钮：点击即确认购买该档
+		for steps: int in EXPAND_TIERS:
+			var btn := Button.new()
+			btn.custom_minimum_size = Vector2(0, 40)
+			btn.add_theme_font_override("font", FONT_BOLD)
+			btn.add_theme_font_size_override("font_size", 15)
+			btn.add_theme_color_override("font_color", Color(0.1, 0.16, 0.08, 1))
+			btn.pressed.connect(_on_tier_pressed.bind(steps))
+			vbox.add_child(btn)
+			_tier_buttons.append(btn)
+			_tier_steps.append(steps)
+		# 购买结果/错误提示
+		_hint = Label.new()
+		_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_hint.add_theme_color_override("font_color", Color(1, 0.6, 0.5, 1))
+		_hint.add_theme_font_override("font", FONT_SERIF)
+		_hint.add_theme_font_size_override("font_size", 13)
+		vbox.add_child(_hint)
+		# 关闭
+		var close_btn := Button.new()
+		close_btn.text = "关闭"
+		close_btn.add_theme_font_override("font", FONT_BOLD)
+		close_btn.add_theme_font_size_override("font_size", 14)
+		close_btn.add_theme_color_override("font_color", Color(0.75, 0.82, 0.95, 1))
+		close_btn.pressed.connect(hide)
+		vbox.add_child(close_btn)
+
+
+	func _make_panel_style() -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.04, 0.08, 0.18, 0.97)
+		sb.border_width_left = 2
+		sb.border_width_top = 2
+		sb.border_width_right = 2
+		sb.border_width_bottom = 2
+		sb.border_color = Color(0.45, 0.8, 1, 0.6)
+		sb.set_corner_radius_all(12)
+		sb.shadow_color = Color(0, 0, 0, 0.4)
+		sb.shadow_size = 12
+		sb.shadow_offset = Vector2(0, 4)
+		return sb
+
+
+	## 当前已扩大次数（每级 +2 列 +2 行，从默认网格尺寸起算）
+	static func expansion_count() -> int:
+		return maxi(0, (BuildingSystem.GRID_W - BuildingSystem.BuildingData.DEFAULT_GRID_W) / 2)
+
+
+	## 扩大 steps 级（每级 +2 列 +2 行）的累计费用：基础费用逐级递增
+	static func expand_cost(steps: int) -> int:
+		var n: int = expansion_count()
+		var total: int = 0
+		for i: int in range(1, steps + 1):
+			total += EXPAND_COST_BASE * (n + i)
+		return total
+
+
+	func open() -> void:
+		refresh()
+		show()
+		# 面板最小尺寸在进入场景树后才确定，打开时延迟一帧按 offsets 居中（anchors 0.5 下对称 offsets 恒居中）
+		_center_panel.call_deferred()
+		UiAnim.panel_enter(_panel)
+
+
+	func _center_panel() -> void:
+		var half: Vector2 = _panel.size / 2.0
+		_panel.offset_left = -half.x
+		_panel.offset_right = half.x
+		_panel.offset_top = -half.y
+		_panel.offset_bottom = half.y
+
+
+	func refresh() -> void:
+		## 刷新尺寸/费用/金币与按钮可用态（购买后可继续选购下一档）
+		var w: int = BuildingSystem.GRID_W
+		var h: int = BuildingSystem.GRID_H
+		_info.text = "当前地图 %d×%d\n每次扩大 +2 列 +2 行，费用逐级递增（%d/%d/%d…）" % [
+			w, h, EXPAND_COST_BASE, EXPAND_COST_BASE * 2, EXPAND_COST_BASE * 3]
+		_gold.text = "当前金币：%d" % int(GameState.gold)
+		for i: int in range(_tier_buttons.size()):
+			var steps: int = _tier_steps[i]
+			var cost: int = expand_cost(steps)
+			_tier_buttons[i].text = "扩大至 %d×%d —— %d 金币" % [w + steps * 2, h + steps * 2, cost]
+			_tier_buttons[i].disabled = GameState.gold < cost
+		_hint.text = ""
+
+
+	func _on_tier_pressed(steps: int) -> void:
+		# 金币不足时面板内直接提示；足够则交由 explore_map 执行购买
+		var cost: int = expand_cost(steps)
+		if GameState.gold < cost:
+			_hint.text = "金币不足：需要 %d 金币（当前 %d）" % [cost, int(GameState.gold)]
+			refresh()
+			return
+		expand_requested.emit(steps)
 
 
 
