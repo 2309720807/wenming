@@ -775,8 +775,3 @@ class MapExpandPanel:
 			refresh()
 			return
 		expand_requested.emit(steps)
-
-
-
-
-
