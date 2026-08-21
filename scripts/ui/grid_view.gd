@@ -48,11 +48,16 @@ var _highlight: MeshInstance3D  # 悬停高亮格
 var _sun: DirectionalLight3D    # 日光（东升西落）
 var _moon: DirectionalLight3D   # 月光（夜晚补光）
 var _sky: WorldEnvironment      # 天空环境（昼夜色渐变）
+var _sun_disc: MeshInstance3D   # 太阳圆盘（可见光球，跟随日光方向）
+var _moon_disc: MeshInstance3D  # 月亮圆盘（冷色光球，跟随月光方向）
 
 # === 昼夜系统 ===
 const DAY_LENGTH: float = 90.0          # 现实 90 秒 = 游戏一昼夜（随 GameState 游戏时间流逝）
 const SUN_MAX_ELEV: float = 0.62        # 太阳最高仰角（sin 弧度 ≈ 35.5°）
 const MOON_MAX_ELEV: float = 0.55       # 月亮最高仰角
+const DISC_DIST: float = 1600.0       # 太阳/月亮圆盘距地图中心距离（视差定位）
+const SUN_DISC_R: float = 52.0        # 太阳圆盘半径
+const MOON_DISC_R: float = 40.0       # 月亮圆盘半径
 const SUN_WARM: Color = Color(1.0, 0.92, 0.78)    # 黄昏暖橙
 const SUN_NOON: Color = Color(1.0, 0.98, 0.92)    # 正午暖白
 const MOON_COLOR: Color = Color(0.62, 0.72, 1.0)  # 月亮冷蓝白
@@ -156,12 +161,25 @@ func _build_3d_world() -> void:
 	_sun.light_energy = 1.1
 	_sun.light_color = Color(1.0, 0.98, 0.92)
 	_sun.shadow_enabled = true
+	_sun.directional_shadow_max_distance = 9000.0   # 阴影覆盖全图（地图 2760+ 格域）
+	_sun.directional_shadow_split_1 = 0.25
+	_sun.directional_shadow_split_2 = 0.6
+	_sun.shadow_bias = 0.02
 	_world.add_child(_sun)
 	_moon = DirectionalLight3D.new()
 	_moon.light_energy = 0.0
 	_moon.light_color = Color(0.6, 0.72, 1.0)
 	_moon.shadow_enabled = true
+	_moon.directional_shadow_max_distance = 9000.0
+	_moon.shadow_bias = 0.02
 	_world.add_child(_moon)
+	# 太阳圆盘（发光暖球）+ 月亮圆盘（冷球）：跟随光方向远处显示
+	_sun_disc = _make_celestial_disc(SUN_DISC_R, Color(1.0, 0.85, 0.45))
+	_sun_disc.name = "SunDisc"
+	_world.add_child(_sun_disc)
+	_moon_disc = _make_celestial_disc(MOON_DISC_R, Color(0.85, 0.9, 1.0))
+	_moon_disc.name = "MoonDisc"
+	_world.add_child(_moon_disc)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-30, 130, 0)
 	fill.light_energy = 0.35
@@ -245,9 +263,12 @@ func _build_ground() -> void:
 			vc += 4
 	var ground := MeshInstance3D.new()
 	ground.mesh = st.commit()
+	# 地面使用标准光照材质：接收太阳/月亮投影（UNSHADED 不产生阴影接收）
 	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.9
+	mat.metallic = 0.0
+	mat.shadow_offset = 0.01
 	ground.material_override = mat
 	_ground_root.add_child(ground)
 	# 格子线（ImmediateMesh 画网格边框）
@@ -486,6 +507,40 @@ func _update_camera() -> void:
 	BuildingSystem.set_map_view(_yaw, _pitch, _cam_target)
 
 
+## 创建天体圆盘（自发光球体，远距离显示为圆盘）
+func _make_celestial_disc(radius: float, glow: Color) -> MeshInstance3D:
+	var disc := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0
+	mesh.radial_segments = 24
+	mesh.rings = 12
+	disc.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # 自身发光不受光照
+	mat.albedo_color = glow
+	mat.emission_enabled = true
+	mat.emission = glow
+	mat.emission_energy_multiplier = 2.0
+	mat.disable_receive_shadows = true
+	disc.material_override = mat
+	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	disc.visible = false
+	return disc
+
+
+## 每帧定位天体：沿光源反方向把圆盘推到远方（视差：太阳月亮挂在天上，不遮挡近景）
+func _update_celestial_disc(light: DirectionalLight3D, disc: MeshInstance3D, up: bool, dist: float) -> void:
+	if disc == null:
+		return
+	disc.visible = up
+	if not up:
+		return
+	# 光 -Z 为照射方向；反方向即天体悬挂位置（相对场景中心点）
+	var dir: Vector3 = -light.global_transform.basis.z
+	disc.position = _cam_target + dir.normalized() * dist
+
+
 ## 昼夜光影：太阳/月亮按游戏时间东升西落（方位 360° + 仰角正弦曲线）
 ## 时间轴 t∈[0,1)：t=0 日出 → t=0.25 正午 → t=0.5 日落 → t=0.75 午夜 → 回归
 func _update_day_night(_delta: float) -> void:
@@ -515,6 +570,9 @@ func _update_day_night(_delta: float) -> void:
 		_moon.light_energy = 0.4 * sin(moon_phase * PI)
 	else:
 		_moon.light_energy = 0.0
+	# --- 太阳/月亮圆盘定位（沿光反方向远处，随仰角升降） ---
+	_update_celestial_disc(_sun, _sun_disc, sun_up, DISC_DIST)
+	_update_celestial_disc(_moon, _moon_disc, moon_up, DISC_DIST)
 	# --- 天空/环境渐变 ---
 	var dayness: float = clampf(sin(sun_phase * PI) if sun_up else 0.0, 0.0, 1.0)
 	var sky_col: Color
