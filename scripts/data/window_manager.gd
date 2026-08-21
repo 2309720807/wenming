@@ -68,8 +68,17 @@ func current_resolution() -> Vector2i:
 	return _window.size
 
 
+## 可选分辨率列表（设置面板使用）：动态过滤，仅保留不超过当前屏幕的选项。
+## （修复：屏幕较小时（如 1536×864）1600×900+ 选项放不下，设置后窗口被系统拒绝缩放，表现为"切换分辨率无效"）
 func get_resolutions() -> Array[Vector2i]:
-	return RESOLUTIONS.duplicate()
+	var screen: Vector2i = DisplayServer.screen_get_size()
+	var result: Array[Vector2i] = []
+	for res: Vector2i in RESOLUTIONS:
+		if res.x <= screen.x and res.y <= screen.y:
+			result.append(res)
+	if result.is_empty():
+		result.append(Vector2i(DESIGN_SIZE))
+	return result
 
 
 func set_resolution(size: Vector2i) -> void:
@@ -77,7 +86,13 @@ func set_resolution(size: Vector2i) -> void:
 	var clamped: Vector2i = size
 	if size.x < DESIGN_SIZE.x or size.y < DESIGN_SIZE.y:
 		clamped = Vector2i(DESIGN_SIZE)
+	# 确保窗口处于普通窗口模式（最大化/全屏时窗口大小由系统管理，设置无效）
+	if _window.mode != Window.MODE_WINDOWED:
+		_window.mode = Window.MODE_WINDOWED
+	# 双保险设置窗口大小（Window.size 与引擎级 API 互补）
+	DisplayServer.window_set_size(clamped)
 	_window.size = clamped
+	_apply_scale()  # 窗口变化后手动应用等比缩放（防 size_changed 未触发）
 	_center_window()
 
 
