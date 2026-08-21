@@ -74,7 +74,7 @@
 - **设置系统**（`scenes/ui/settings_menu.tscn` + `scripts/ui/settings_menu.gd`）：
   - 底栏右下角"设置"按钮，打开居中设置面板
   - **游戏分辨率**：下拉选择 1280×720 / 1600×900 / 1920×1080 / 2560×1440，选择即应用（`WindowManager`）
-  - **界面缩放**：滑块 80%~150% 任意缩放界面，自动记忆（`user://settings.cfg`），下次启动恢复
+  - **画质档位（超采样）**：设置面板下拉选择 原始/2x/4x/8x/16x 超采样，子视口按档位高清渲染，自动记忆（`user://settings.cfg`），下次启动恢复
   - **礼包码**：输入兑换金币奖励，数据配置于 `data/gift_codes.json`，防重复兑换（`GiftCodeManager` Autoload）
   - **退出游戏**：确认对话框后退出
   - **开发者调试台**：输入礼包码 `tiaoshitai`（大小写不敏感）开启，可调倍速（1x-10x）/暂停、GameState 全部数值 +/- 调节、游戏资产数据浏览、**离线挂机模拟**（详见 AGENTS.md 3.2）

@@ -603,12 +603,15 @@ func _zoom_at(factor: float) -> void:
 
 
 func _screen_to_ground(screen_pos: Vector2) -> Vector3:
-	# 输入为 GridView 布局坐标；子视口渲染分辨率 = 布局 × 缩放系数（_physical_size），
-	# 射线投影需换算为子视口像素坐标（stretch=true 时两者不再 1:1）
+	# 输入为 GridView 布局坐标；子视口渲染分辨率 = 布局 × 缩放 × 超采样（_physical_size），
+	# 射线投影需换算为子视口像素坐标（含画质档位超采样倍数）
 	var factor: float = 1.0
 	if WindowManager.has_method("current_scale_factor"):
 		factor = WindowManager.current_scale_factor()
-	var vp_px := screen_pos * factor
+	var ss: float = 1.0
+	if WindowManager.has_method("supersample_factor"):
+		ss = WindowManager.supersample_factor()
+	var vp_px := screen_pos * factor * ss
 	var ray_origin: Vector3 = _camera.project_ray_origin(vp_px)
 	var ray_dir: Vector3 = _camera.project_ray_normal(vp_px)
 	if absf(ray_dir.y) < 0.0001:
@@ -982,12 +985,16 @@ func can_build_at(cell: Vector2i, w: int, h: int) -> bool:
 	return true
 
 
-## 子视口目标分辨率：控件布局尺寸 × 窗口等比缩放系数（物理像素），保证放大后 3D 画面清晰
+## 子视口目标分辨率：布局尺寸 × 窗口等比缩放 × 画质档位超采样（线性倍率）
+## 画质档位见 WindowManager.QUALITY_LEVELS（面积 1/2/4/8/16 倍 → 线性 √档位）
 func _physical_size() -> Vector2i:
 	var factor: float = 1.0
 	if WindowManager.has_method("current_scale_factor"):
 		factor = WindowManager.current_scale_factor()
-	return Vector2i(maxi(64, int(size.x * factor)), maxi(64, int(size.y * factor)))
+	var ss: float = 1.0
+	if WindowManager.has_method("supersample_factor"):
+		ss = WindowManager.supersample_factor()
+	return Vector2i(maxi(64, int(size.x * factor * ss)), maxi(64, int(size.y * factor * ss)))
 
 
 func _update_viewport_size() -> void:
@@ -998,11 +1005,14 @@ func _update_viewport_size() -> void:
 	if target != _viewport.size:
 		_viewport.size = target
 		_viewport_container.size = Vector2(target)
-	# 反向缩放补偿：容器显示尺寸 = 布局尺寸（GridView 区域），渲染像素 = 屏幕像素
+	# 反向缩放补偿：容器显示尺寸 = 布局尺寸（GridView 区域），渲染像素 = 屏幕像素 × 超采样
 	var factor: float = 1.0
 	if WindowManager.has_method("current_scale_factor"):
 		factor = WindowManager.current_scale_factor()
-	var inv: Vector2 = Vector2(1.0 / factor, 1.0 / factor)
+	var ss: float = 1.0
+	if WindowManager.has_method("supersample_factor"):
+		ss = WindowManager.supersample_factor()
+	var inv: Vector2 = Vector2(1.0 / (factor * ss), 1.0 / (factor * ss))
 	if _viewport_container.scale != inv:
 		_viewport_container.scale = inv
 

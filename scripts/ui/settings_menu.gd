@@ -16,8 +16,7 @@ signal role_switched(message: String)  # 切换角色完成（主界面消息日
 @onready var btn_exit: Button = %BtnExit
 @onready var btn_close: Button = %BtnClose
 @onready var confirm_dialog: ConfirmationDialog = %ConfirmDialog
-@onready var zoom_slider: HSlider = %ZoomSlider
-@onready var zoom_value_label: Label = %ZoomValueLabel
+@onready var quality_option: OptionButton = %QualityOption
 @onready var btn_save: Button = %BtnSave
 @onready var btn_switch_role: Button = %BtnSwitchRole
 @onready var save_result_label: Label = %SaveResultLabel
@@ -37,8 +36,8 @@ func _ready() -> void:
 	confirm_dialog.confirmed.connect(_on_confirm_exit)
 	btn_save.pressed.connect(_on_save_pressed)
 	btn_switch_role.pressed.connect(_on_switch_role_pressed)
-	# 界面任意缩放（自动记忆，见 WindowManager.set_zoom_scale）
-	zoom_slider.value_changed.connect(_on_zoom_changed)
+	# 画质档位（超采样，自动记忆，见 WindowManager.set_quality_level）
+	quality_option.item_selected.connect(_on_quality_selected)
 	# 切换角色列表（复用 SaveList 组件：进入/删除/刷新）
 	_save_list = SaveList.new()
 	_save_list.name = "SaveList"
@@ -51,16 +50,19 @@ func open() -> void:
 	_fill_resolutions()
 	gift_result_label.text = ""
 	gift_code_input.clear()
-	zoom_slider.set_value_no_signal(WindowManager.zoom_scale)
-	zoom_value_label.text = "%d%%" % int(WindowManager.zoom_scale * 100.0)
+	# 画质档位：同步当前值（QUALITY_LEVELS 与下拉顺序一致）
+	for i: int in range(WindowManager.QUALITY_LEVELS.size()):
+		if WindowManager.QUALITY_LEVELS[i] == WindowManager.quality_level:
+			quality_option.select(i)
+			break
 	show()
 	UiAnim.panel_enter(self)  # 面板入场动画（纯视觉）
 
 
-func _on_zoom_changed(value: float) -> void:
-	## 界面任意缩放比例：实时生效并记忆（user://settings.cfg）
-	WindowManager.set_zoom_scale(value)
-	zoom_value_label.text = "%d%%" % int(value * 100.0)
+func _on_quality_selected(index: int) -> void:
+	## 画质档位（超采样面积倍数）：实时生效并记忆（user://settings.cfg）
+	if index >= 0 and index < WindowManager.QUALITY_LEVELS.size():
+		WindowManager.set_quality_level(WindowManager.QUALITY_LEVELS[index])
 
 
 func close() -> void:
