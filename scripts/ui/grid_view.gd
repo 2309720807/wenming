@@ -53,11 +53,10 @@ var _moon_disc: MeshInstance3D  # 月亮圆盘（冷色光球，跟随月光方�
 
 # === 昼夜系统 ===
 const DAY_LENGTH: float = 90.0          # 现实 90 秒 = 游戏一昼夜（随 GameState 游戏时间流逝）
-const SUN_MAX_ELEV: float = 0.62        # 太阳最高仰角（sin 弧度 ≈ 35.5°）
-const MOON_MAX_ELEV: float = 0.55       # 月亮最高仰角
-const DISC_DIST: float = 2400.0       # 太阳/月亮圆盘沿相机前方距离（视差定位，保证视锥内）
-const SUN_DISC_R: float = 68.0        # 太阳圆盘半径
-const MOON_DISC_R: float = 52.0       # 月亮圆盘半径
+# 天体轨道采用竖直圆模型：θ 从东地平(0)→头顶(π/2)→西地平(π)→地下(2π)
+const ORBIT_R: float = 1500.0         # 天体竖直轨道半径（以地图中心为圆心，东升→头顶→西落）
+const SUN_DISC_R: float = 72.0        # 太阳圆盘半径
+const MOON_DISC_R: float = 56.0       # 月亮圆盘半径
 const SUN_WARM: Color = Color(1.0, 0.92, 0.78)    # 黄昏暖橙
 const SUN_NOON: Color = Color(1.0, 0.98, 0.92)    # 正午暖白
 const MOON_COLOR: Color = Color(0.62, 0.72, 1.0)  # 月亮冷蓝白
@@ -529,21 +528,6 @@ func _make_celestial_disc(radius: float, glow: Color) -> MeshInstance3D:
 	return disc
 
 
-## 每帧定位天体：相对相机放置（保证在相机视锥内可见；太阳月亮始终挂在天上）
-func _update_celestial_disc(light: DirectionalLight3D, disc: MeshInstance3D, up: bool, dist: float) -> void:
-	if disc == null:
-		return
-	disc.visible = up
-	if not up:
-		return
-	# DirectionalLight3D 朝 -Z 照射；+basis.z 即"光源所在"的天空方向
-	var sky_dir: Vector3 = light.global_transform.basis.z.normalized()
-	# 相机视线前方 dist + 天向偏移：俯视地面时太阳也在视锥内（修复：原相对场景中心，
-	# 正午太阳在头顶上方，被俯视相机排除在视野外）
-	var cam_fwd: Vector3 = -_camera.global_transform.basis.z.normalized()
-	disc.position = _camera.global_position + cam_fwd * dist + sky_dir * (dist * 0.35)
-
-
 ## 昼夜光影：太阳/月亮按游戏时间东升西落（方位 360° + 仰角正弦曲线）
 ## 时间轴 t∈[0,1)：t=0 日出 → t=0.25 正午 → t=0.5 日落 → t=0.75 午夜 → 回归
 func _update_day_night(_delta: float) -> void:
@@ -551,41 +535,46 @@ func _update_day_night(_delta: float) -> void:
 		return
 	# TimeManager.game_time 为现实秒（1 月 = 5 秒）；直接取模 DAY_LENGTH 得到真实 90 秒一昼夜
 	var t: float = fposmod(TimeManager.game_time, DAY_LENGTH) / DAY_LENGTH
-	# --- 太阳 ---
-	var sun_phase: float = t * 2.0  # 0~1 为白昼，1~2 为夜晚
-	var sun_up: bool = sun_phase <= 1.0
+	# --- 太阳：竖直轨道绕地图中心（θ=0 东地平 → π/2 头顶 → π 西地平 → 2π 地下） ---
+	var sun_theta: float = fposmod(t, 1.0) * TAU  # 一昼夜 360°
+	var sun_up: bool = sin(sun_theta) > 0.0
+	var orbit_center: Vector3 = Vector3(
+		float(BuildingSystem.GRID_W) * _cell_size_3d() * 0.5, 0.0,
+		float(BuildingSystem.GRID_H) * _cell_size_3d() * 0.5)
+	var sun_alt: float = sin(sun_theta)           # 仰角因子（0 地平 → 1 头顶）
 	if sun_up:
-		# 日出=0（东）→ 正午=0.5（南天顶）→ 日落=1（西）
-		var az: float = sun_phase * PI           # 方位角 0..π（东→西）
-		var elev: float = sin(sun_phase * PI) * SUN_MAX_ELEV
-		_sun.rotation_degrees = Vector3(rad_to_deg(elev) - 90.0, lip_deg(az, -90.0, 90.0), 0.0)
-		# 能量与仰角同步：日出/日落=0（平滑进入夜晚，原 0.35 残光在切换瞬间跳变）
-		var sun_curve: float = sin(sun_phase * PI)
-		_sun.light_energy = 1.1 * sun_curve
-		_sun.light_color = SUN_NOON.lerp(SUN_WARM, 1.0 - sun_curve)
+		# 圆盘竖直轨道位置（XZ 平面不动，沿 Y 圆）：
+		_sun_disc.position = orbit_center + Vector3(cos(sun_theta), sin(sun_theta), 0.0) * ORBIT_R
+		_sun_disc.visible = true  # 修复：升起时未显示（初始 visible=false）
+		_sun.light_energy = 1.1 * sun_alt
+		_sun.light_color = SUN_NOON.lerp(SUN_WARM, 1.0 - sun_alt)
+		# 光照方向：从太阳轨道位置指向地图中心（真实的东升西落受光角度）
+		var to_center: Vector3 = (orbit_center - _sun_disc.position).normalized()
+		_sun.rotation_degrees = Vector3(rad_to_deg(asin(clampf(to_center.y, -1.0, 1.0))),
+				rad_to_deg(atan2(to_center.x, to_center.z)), 0.0)
 	else:
 		_sun.light_energy = 0.0
-	# --- 月亮 ---
-	var moon_phase: float = fposmod(sun_phase, 1.0)
-	var moon_up: bool = not sun_up
+		_sun_disc.visible = false
+	# --- 月亮：与太阳相对（等相位差 π：日落时月升） ---
+	var moon_theta: float = fposmod(sun_theta + PI, TAU)
+	var moon_up: bool = sin(moon_theta) > 0.0
 	if moon_up:
-		var maz: float = moon_phase * PI
-		var melev: float = sin(moon_phase * PI) * MOON_MAX_ELEV
-		_moon.rotation_degrees = Vector3(rad_to_deg(melev) - 90.0, lip_deg(maz, -90.0, 90.0), 0.0)
-		# 月光随月轨渐入（0→0.4→0），与天空 nightness 同步无暗隙
-		_moon.light_energy = 0.4 * sin(moon_phase * PI)
+		_moon_disc.position = orbit_center + Vector3(cos(moon_theta), sin(moon_theta), 0.0) * ORBIT_R
+		_moon_disc.visible = true  # 修复：升起时未显示
+		_moon.light_energy = 0.4 * sin(moon_theta)
+		var m_to_center: Vector3 = (orbit_center - _moon_disc.position).normalized()
+		_moon.rotation_degrees = Vector3(rad_to_deg(asin(clampf(m_to_center.y, -1.0, 1.0))),
+				rad_to_deg(atan2(m_to_center.x, m_to_center.z)), 0.0)
 	else:
 		_moon.light_energy = 0.0
-	# --- 太阳/月亮圆盘定位（沿光反方向远处，随仰角升降） ---
-	_update_celestial_disc(_sun, _sun_disc, sun_up, DISC_DIST)
-	_update_celestial_disc(_moon, _moon_disc, moon_up, DISC_DIST)
+		_moon_disc.visible = false
 	# --- 天空/环境渐变（平滑连续，无瞬间跳变） ---
-	# 夜晚深沉度 = sin(月相位弧)：月出(0)→深更(0.5)=1→月落(1)→0，与月轨同步
-	var nightness: float = sin(moon_phase * PI)  # 月出月落时=0（黄昏），深夜=1
+	# 夜晚深度 = sin(月相位)：月出=0（黄昏）→ 深更=1 → 月落=0（黎明）
+	var nightness: float = clampf(sin(moon_theta), 0.0, 1.0)
 	var sky_col: Color
 	var ambient: float
 	if sun_up:
-		var dayness: float = sin(sun_phase * PI)
+		var dayness: float = clampf(sun_alt, 0.0, 1.0)
 		sky_col = DAY_SKY.lerp(DUSK_SKY, 1.0 - dayness)
 		ambient = 0.5 + 0.45 * dayness  # 白昼环境光提亮（修复灰暗）
 	else:
@@ -595,11 +584,6 @@ func _update_day_night(_delta: float) -> void:
 	_sky.environment.background_color = sky_col
 	_sky.environment.ambient_light_color = sky_col.lightened(0.25)
 	_sky.environment.ambient_light_energy = ambient
-
-
-## 角度计算辅助：相位→方位角（东为 -90°，西为 +90°，即绕 Y 方向）
-func lip_deg(phase: float, lo: float, hi: float) -> float:
-	return lo + (hi - lo) * phase
 
 
 func _min_zoom() -> float:
