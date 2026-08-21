@@ -744,11 +744,12 @@ func _update_hover_highlight() -> void:
 		var r: Rect2i = _selection_rect()
 		_highlight.position = Vector3((r.position.x + r.size.x * 0.5) * cellf, 0.05,
 				(r.position.y + r.size.y * 0.5) * cellf)
-		_highlight.scale = Vector3(r.size.x, 1.0, r.size.y)
+		# 缩放 × 格子尺寸：框选矩形按真实格数占地显示
+		_highlight.scale = Vector3(r.size.x * cellf, 1.0, r.size.y * cellf)
 		_highlight.visible = true
 		(_highlight.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.4, 0.35, 0.3)
 		return
-	# 建造预选框：选中建筑时按建筑尺寸显示绿（可建）/红（不可建）/红闪（金币不足）
+	# 建造预选框：选中建筑时按建筑真实占地尺寸显示绿（可建）/红（不可建）/红闪（金币不足）
 	if not preview_item.is_empty() and hover_cell.x >= 0 and hover_cell.y >= 0:
 		var pw: int = int(preview_item.get("width", 1))
 		var ph: int = int(preview_item.get("height", 1))
@@ -764,7 +765,8 @@ func _update_hover_highlight() -> void:
 			color = Color(0.95, 0.3, 0.3, 0.4)
 		_highlight.position = Vector3((hover_cell.x + pw * 0.5) * cellf, 0.05,
 				(hover_cell.y + ph * 0.5) * cellf)
-		_highlight.scale = Vector3(pw, 1.0, ph)
+		# 缩放 × 格子尺寸：预选框 = 建筑真实占用大小（w×h 格）
+		_highlight.scale = Vector3(pw * cellf, 1.0, ph * cellf)
 		_highlight.visible = true
 		(_highlight.material_override as StandardMaterial3D).albedo_color = color
 		return
@@ -772,7 +774,7 @@ func _update_hover_highlight() -> void:
 		_highlight.visible = false
 		return
 	_highlight.position = Vector3((hover_cell.x + 0.5) * cellf, 0.05, (hover_cell.y + 0.5) * cellf)
-	_highlight.scale = Vector3.ONE
+	_highlight.scale = Vector3(cellf, 1.0, cellf)
 	_highlight.visible = true
 	(_highlight.material_override as StandardMaterial3D).albedo_color = Color(0.5, 0.95, 0.6, 0.32)
 
