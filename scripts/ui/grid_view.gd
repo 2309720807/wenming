@@ -240,12 +240,12 @@ func _draw_tree(cell_pos: Vector2, cell_size: float, x: int, y: int) -> void:
 	var trunk_w: float = cell_size * 0.13
 	var trunk_h: float = cell_size * 0.26
 	var crown_r: float = cell_size * (0.3 + _hash_noise(x, y, 1) * 0.12)
-	var crown_cy: float = cell_pos.y + trunk_h + crown_r * 0.55
+	# 树冠圆心相对格子上边的偏移（绘制时再叠加 cell_pos，原代码重复加 cell_pos.y 导致树冠错位到 2 倍行距）
+	var crown_cy: float = trunk_h + crown_r * 0.55
 	draw_rect(Rect2(cell_pos + Vector2(cell_size * 0.5 - trunk_w / 2, cell_size * 0.58),
 			Vector2(trunk_w, trunk_h)), Color(0.42, 0.3, 0.2, 0.95))
 	var shade: float = 0.75 + _hash_noise(x, y, 2) * 0.25
 	var leaf: Color = Color(0.2, 0.55 * shade, 0.3, 0.95)
-	draw_circle(cell_pos + Vector2(cell_size * 0.5, crown_cy), crown_r, leaf)
 	draw_circle(cell_pos + Vector2(cell_size * (0.34 + _hash_noise(x, y, 3) * 0.3), crown_cy - crown_r * 0.28),
 			crown_r * 0.6, leaf.lightened(0.12))
 	draw_circle(cell_pos + Vector2(cell_size * (0.56 + _hash_noise(x, y, 4) * 0.25), crown_cy + crown_r * 0.08),
