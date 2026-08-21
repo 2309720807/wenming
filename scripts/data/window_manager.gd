@@ -68,13 +68,19 @@ func current_resolution() -> Vector2i:
 	return _window.size
 
 
-## 可选分辨率列表（设置面板使用）：动态过滤，仅保留不超过当前屏幕的选项。
-## （修复：屏幕较小时（如 1536×864）1600×900+ 选项放不下，设置后窗口被系统拒绝缩放，表现为"切换分辨率无效"）
+## 可选分辨率列表（设置面板使用）：动态过滤，仅保留"物理尺寸"不超过当前屏幕的选项。
+## Godot 窗口为 DPI 感知：逻辑尺寸 = 物理尺寸 × (dpi/96)，过滤必须按物理尺寸比较，
+## 否则在高 DPI 屏幕（如 125% 缩放）上 1600×900 会被误判超屏而不可选。
 func get_resolutions() -> Array[Vector2i]:
-	var screen: Vector2i = DisplayServer.screen_get_size()
+	var screen_phys: Vector2i = DisplayServer.screen_get_size()
+	var dpi_scale: float = DisplayServer.screen_get_dpi() / 96.0
+	if dpi_scale <= 0.0:
+		dpi_scale = 1.0
 	var result: Array[Vector2i] = []
 	for res: Vector2i in RESOLUTIONS:
-		if res.x <= screen.x and res.y <= screen.y:
+		# 窗口物理尺寸 = 逻辑尺寸 ÷ DPI 缩放（物理 = 逻辑 / (dpi/96)）
+		var phys: Vector2i = Vector2i(int(res.x / dpi_scale), int(res.y / dpi_scale))
+		if phys.x <= screen_phys.x and phys.y <= screen_phys.y:
 			result.append(res)
 	if result.is_empty():
 		result.append(Vector2i(DESIGN_SIZE))

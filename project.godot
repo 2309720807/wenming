@@ -31,6 +31,10 @@ _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=720
 
+[editor]
+
+run/embed_game_window=false
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")

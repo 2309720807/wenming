@@ -122,9 +122,12 @@ func _build_3d_world() -> void:
 	add_child(vpc)
 	var vp := SubViewport.new()
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	vp.size = Vector2i(1024, 560)
+	# 子视口分辨率跟随物理显示尺寸（关闭 stretch 手动管理，避免窗口放大时拉伸变模糊）
+	vpc.stretch = false
+	vp.size = _physical_size()
 	vpc.add_child(vp)
 	_viewport = vp
+	set_notify_transform(true)  # 监听根缩放变化（窗口/界面缩放时更新子视口分辨率）
 	_world = Node3D.new()
 	_world.name = "World3D"
 	vp.add_child(_world)
@@ -970,5 +973,23 @@ func can_build_at(cell: Vector2i, w: int, h: int) -> bool:
 	return true
 
 
-# 注：SubViewportContainer 开启 stretch 时由容器自动拉伸管理，不可手动修改 SubViewport.size
-# （手动设置会报错并导致视口渲染异常，故不再处理 NOTIFICATION_RESIZED）
+## 子视口目标分辨率：控件布局尺寸 × 窗口等比缩放系数（物理像素），保证放大后 3D 画面清晰
+func _physical_size() -> Vector2i:
+	var factor: float = 1.0
+	if WindowManager.has_method("current_scale_factor"):
+		factor = WindowManager.current_scale_factor()
+	return Vector2i(maxi(64, int(size.x * factor)), maxi(64, int(size.y * factor)))
+
+
+func _update_viewport_size() -> void:
+	if _viewport == null:
+		return
+	var target: Vector2i = _physical_size()
+	if target != _viewport.size:
+		_viewport.size = target
+
+
+func _notification(what: int) -> void:
+	# 控件尺寸/全局缩放变化 → 同步子视口分辨率（防 3D 画面拉伸模糊）
+	if what == NOTIFICATION_RESIZED or what == NOTIFICATION_TRANSFORM_CHANGED:
+		_update_viewport_size()
