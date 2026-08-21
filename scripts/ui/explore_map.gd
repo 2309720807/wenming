@@ -24,6 +24,7 @@ var selected_item: Dictionary = {}
 var _action_ctrl: BuildingActionPanel
 var _feedback: BuildingFeedback
 var _expand_panel: MapExpandPanel  # 扩大地图购买面板（点"地图"按钮弹出）
+var _btn_cancel_build: Button      # 取消建造按钮（选中建筑后显示）
 
 
 func _ready() -> void:
@@ -103,6 +104,20 @@ func _build_top_buttons() -> void:
 	btn_demolish.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.35, 0.16, 0.12, 1.0)))
 	btn_demolish.pressed.connect(_on_demolish_mode_pressed)
 	add_child(btn_demolish)
+	# 取消建造按钮：位于拆除按钮左侧，选中建筑（进入建造）后显示，点击取消建造模式
+	_btn_cancel_build = Button.new()
+	_btn_cancel_build.name = "BtnCancelBuild"
+	_btn_cancel_build.text = "✖ 取消建造"
+	_btn_cancel_build.custom_minimum_size = Vector2(96, 34)
+	_btn_cancel_build.position = Vector2(size.x - 388, 8)
+	_btn_cancel_build.add_theme_font_override("font", FONT_BTN)
+	_btn_cancel_build.add_theme_font_size_override("font_size", 14)
+	_btn_cancel_build.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.55, 0.45, 0.2, 0.9)))
+	_btn_cancel_build.add_theme_stylebox_override("hover", _make_top_btn_style(Color(0.75, 0.6, 0.28, 1.0)))
+	_btn_cancel_build.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.4, 0.32, 0.14, 1.0)))
+	_btn_cancel_build.visible = false
+	_btn_cancel_build.pressed.connect(_on_cancel_build_pressed)
+	add_child(_btn_cancel_build)
 	# 探索按钮：进入副本探索界面（攻城系统入口，见设计文档 3.11）
 	var btn_explore := Button.new()
 	btn_explore.name = "BtnInstanceExplore"
@@ -164,6 +179,8 @@ func _on_item_selected(item: Dictionary) -> void:
 	selected_item = item
 	grid_view.preview_item = item
 	grid_view.queue_redraw()
+	# 取消建造按钮：进入建造（选中建筑）后显示，取消后隐藏
+	_btn_cancel_build.visible = not item.is_empty()
 	if item.is_empty():
 		# 再次点击同一建筑 = 取消选择
 		info_panel.hide()
@@ -204,6 +221,12 @@ func _on_hover_changed(cell: Vector2i) -> void:
 
 
 # === 点击 ===
+
+func _on_cancel_build_pressed() -> void:
+	## 取消建造模式：清空左侧菜单选中态与网格预选（同右键取消）
+	_on_preview_cancel_requested()
+	info_hint.text = "已退出建造模式"
+
 
 func _on_demolish_mode_pressed() -> void:
 	## 切换批量拆除模式（再次点击或右键退出）
