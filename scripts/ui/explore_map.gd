@@ -9,6 +9,9 @@ extends Control
 # 建筑产出总览面板定位（网格下方空白区，设计坐标系 1280×720）
 const SUMMARY_RECT: Rect2 = Rect2(260, 596, 1010, 84)
 const FONT_BTN: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
+# 设计宽度：WindowManager 保证布局坐标系恒定 1280×720（根 Control 强制设计尺寸等比缩放），
+# 按钮定位必须用固定设计宽度而非 size.x——_ready 早于 setup_scale_root，size 会跟随窗口分辨率导致按钮移出屏幕
+const DESIGN_W: float = 1280.0
 
 @onready var menu: BuildingMenu = %MenuList
 @onready var grid_view: GridView = %GridView
@@ -83,7 +86,7 @@ func _build_top_buttons() -> void:
 	btn_map.name = "BtnMapExpand"
 	btn_map.text = "🗺 地图"
 	btn_map.custom_minimum_size = Vector2(88, 34)
-	btn_map.position = Vector2(size.x - 196, 8)
+	btn_map.position = Vector2(DESIGN_W - 196, 8)
 	btn_map.add_theme_font_override("font", FONT_BTN)
 	btn_map.add_theme_font_size_override("font_size", 14)
 	btn_map.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.1, 0.3, 0.55, 0.9)))
@@ -96,7 +99,7 @@ func _build_top_buttons() -> void:
 	btn_demolish.name = "BtnBatchDemolish"
 	btn_demolish.text = "🧹 拆除"
 	btn_demolish.custom_minimum_size = Vector2(88, 34)
-	btn_demolish.position = Vector2(size.x - 292, 8)
+	btn_demolish.position = Vector2(DESIGN_W - 292, 8)
 	btn_demolish.add_theme_font_override("font", FONT_BTN)
 	btn_demolish.add_theme_font_size_override("font_size", 14)
 	btn_demolish.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.5, 0.25, 0.2, 0.9)))
@@ -109,7 +112,7 @@ func _build_top_buttons() -> void:
 	_btn_cancel_build.name = "BtnCancelBuild"
 	_btn_cancel_build.text = "✖ 取消"
 	_btn_cancel_build.custom_minimum_size = Vector2(88, 34)
-	_btn_cancel_build.position = Vector2(size.x - 388, 8)
+	_btn_cancel_build.position = Vector2(DESIGN_W - 388, 8)
 	_btn_cancel_build.add_theme_font_override("font", FONT_BTN)
 	_btn_cancel_build.add_theme_font_size_override("font_size", 14)
 	# 红色系（取消/危险操作语义，与拆除按钮区分）
@@ -124,7 +127,7 @@ func _build_top_buttons() -> void:
 	btn_explore.name = "BtnInstanceExplore"
 	btn_explore.text = "⚔ 探索"
 	btn_explore.custom_minimum_size = Vector2(88, 34)
-	btn_explore.position = Vector2(size.x - 100, 8)
+	btn_explore.position = Vector2(DESIGN_W - 100, 8)
 	btn_explore.add_theme_font_override("font", FONT_BTN)
 	btn_explore.add_theme_font_size_override("font_size", 14)
 	btn_explore.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.4, 0.2, 0.5, 0.9)))
