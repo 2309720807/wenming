@@ -8,6 +8,14 @@ class_name GridView
 signal hover_changed(cell: Vector2i)
 signal cell_clicked(cell: Vector2i)
 signal preview_cancel_requested  # 右键取消预选建造
+signal drag_place_requested(cell: Vector2i)  # 左键拖动连续建造
+
+const ZOOM_MIN: float = 0.6
+const ZOOM_MAX: float = 1.8
+
+var zoom: float = 1.0
+var _last_drag_cell: Vector2i = Vector2i(-1, -1)
+var _mouse_left_down: bool = false  # 本地记录左键状态（拖动连续建造，兼容事件无 button_mask 的情况）
 
 const FONT_BOLD: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
 const FONT_NORMAL: Font = preload("res://assets/fonts/SourceHanSansCN-Normal.ttf")
@@ -68,8 +76,13 @@ func _gui_input(event: InputEvent) -> void:
 			hover_changed.emit(cell)
 			queue_redraw()
 	elif event is InputEventMouseButton \
-			and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		cell_clicked.emit(_pos_to_cell(event.position))
+			and event.button_index == MOUSE_BUTTON_LEFT:
+		_mouse_left_down = event.pressed
+		if event.pressed:
+			_last_drag_cell = Vector2i(-1, -1)
+			cell_clicked.emit(_pos_to_cell(event.position))
+		else:
+			_last_drag_cell = Vector2i(-1, -1)
 	elif event is InputEventMouseButton \
 			and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# 右键取消当前预选建造
@@ -77,6 +90,20 @@ func _gui_input(event: InputEvent) -> void:
 			preview_item = {}
 			preview_cancel_requested.emit()
 			queue_redraw()
+	elif event is InputEventMouseButton \
+			and event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+		# 滚轮放大（以网格中心为锚点）
+		set_zoom(zoom * 1.12)
+	elif event is InputEventMouseButton \
+			and event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+		# 滚轮缩小
+		set_zoom(zoom / 1.12)
+	elif event is InputEventMouseMotion and _mouse_left_down:
+		# 左键按住拖动：连续建造（跳过已触发过的格子）
+		var drag_cell: Vector2i = _pos_to_cell(event.position)
+		if drag_cell.x >= 0 and drag_cell != _last_drag_cell:
+			_last_drag_cell = drag_cell
+			drag_place_requested.emit(drag_cell)
 
 
 # === 绘制 ===
@@ -471,7 +498,13 @@ func _draw_people() -> void:
 
 # === 工具 ===
 
-func _cell() -> int: return BuildingSystem.cell_size
+func _cell() -> float: return float(BuildingSystem.cell_size) * zoom
+
+
+func set_zoom(new_zoom: float) -> void:
+	## 滚轮缩放地图（0.6x ~ 1.8x），网格以中央区域中心为锚点缩放
+	zoom = clampf(new_zoom, ZOOM_MIN, ZOOM_MAX)
+	queue_redraw()
 
 
 func _grid_origin() -> Vector2:

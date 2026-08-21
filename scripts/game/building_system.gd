@@ -127,10 +127,28 @@ func reset_state() -> void:
 	grid_changed.emit(Vector2i.ZERO)
 
 
+func expand_grid(extra_w: int, extra_h: int) -> void:
+	## 扩大地图：右侧追加列、下侧追加行（消费金币由 UI 层处理），
+	## 地图尺寸随存档持久化（restore_state 以存档网格尺寸为准）
+	for x: int in range(extra_w):
+		var column: Array = []
+		for y: int in range(GRID_H + extra_h):
+			column.append("")
+		grid.append(column)
+	for x: int in range(GRID_W):
+		for y: int in range(GRID_H, GRID_H + extra_h):
+			grid[x].append("")
+	GRID_W += extra_w
+	GRID_H += extra_h
+	grid_changed.emit(Vector2i.ZERO)
+
+
 func restore_state(grid_data: Array, placed_data: Dictionary, base_stats: Dictionary) -> void:
 	# 恢复网格/建筑/基础快照并重算加成（SaveManager 加载时调用）
-	# 存档网格尺寸不符（如旧版本/异常存档）时重新生成，避免绘制越界
-	if grid_data.size() == GRID_W:
+	# 存档网格尺寸优先（地图扩大持久化）；异常存档（空/损坏）时回退默认生成，避免绘制越界
+	if grid_data.size() > 0 and grid_data[0] is Array and (grid_data[0] as Array).size() > 0:
+		GRID_W = grid_data.size()
+		GRID_H = (grid_data[0] as Array).size()
 		grid = grid_data
 	else:
 		grid = BuildingGrid.init_grid(GRID_W, GRID_H)

@@ -8,6 +8,8 @@ extends Control
 
 # 建筑产出总览面板定位（网格下方空白区，设计坐标系 1280×720）
 const SUMMARY_RECT: Rect2 = Rect2(260, 596, 1010, 84)
+const EXPAND_COST_BASE: int = 500  # 扩大地图基础费用（每次扩大递增 500）
+const FONT_BTN: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
 
 @onready var menu: BuildingMenu = %MenuList
 @onready var grid_view: GridView = %GridView
@@ -35,6 +37,7 @@ func _ready() -> void:
 	action_panel.hide()
 	info_hint.text = BuildingInfo.HINT_BASE
 	_add_summary_panel()
+	_build_top_buttons()
 
 
 func _add_summary_panel() -> void:
@@ -52,6 +55,7 @@ func _connect_signals() -> void:
 	grid_view.hover_changed.connect(_on_hover_changed)
 	grid_view.cell_clicked.connect(_on_cell_clicked)
 	grid_view.preview_cancel_requested.connect(_on_preview_cancel_requested)
+	grid_view.drag_place_requested.connect(_on_drag_place_requested)
 	BuildingSystem.grid_changed.connect(func(_cell: Vector2i) -> void: grid_view.queue_redraw())
 	BuildingSystem.building_completed.connect(_feedback.on_completed)
 	BuildingSystem.building_upgraded.connect(_feedback.on_upgraded)
@@ -61,6 +65,64 @@ func _connect_signals() -> void:
 	action_demolish_btn.pressed.connect(_on_demolish_pressed)
 	%ActionCloseBtn.pressed.connect(_close_action_panel)
 
+
+
+# === 右上角操作按钮（地图扩大 / 副本探索）===
+
+func _build_top_buttons() -> void:
+	# 地图按钮：消费金币扩大地图面积（每次 +2 列 +2 行，费用递增）
+	var btn_map := Button.new()
+	btn_map.name = "BtnMapExpand"
+	btn_map.text = "🗺 地图"
+	btn_map.custom_minimum_size = Vector2(88, 34)
+	btn_map.position = Vector2(size.x - 196, 8)
+	btn_map.add_theme_font_override("font", FONT_BTN)
+	btn_map.add_theme_font_size_override("font_size", 14)
+	btn_map.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.1, 0.3, 0.55, 0.9)))
+	btn_map.add_theme_stylebox_override("hover", _make_top_btn_style(Color(0.15, 0.42, 0.75, 1.0)))
+	btn_map.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.07, 0.22, 0.42, 1.0)))
+	btn_map.pressed.connect(_on_map_expand_pressed)
+	add_child(btn_map)
+	# 探索按钮：进入副本探索界面（攻城系统入口，见设计文档 3.11）
+	var btn_explore := Button.new()
+	btn_explore.name = "BtnInstanceExplore"
+	btn_explore.text = "⚔ 探索"
+	btn_explore.custom_minimum_size = Vector2(88, 34)
+	btn_explore.position = Vector2(size.x - 100, 8)
+	btn_explore.add_theme_font_override("font", FONT_BTN)
+	btn_explore.add_theme_font_size_override("font_size", 14)
+	btn_explore.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.4, 0.2, 0.5, 0.9)))
+	btn_explore.add_theme_stylebox_override("hover", _make_top_btn_style(Color(0.55, 0.28, 0.68, 1.0)))
+	btn_explore.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.3, 0.14, 0.38, 1.0)))
+	btn_explore.pressed.connect(_on_explore_pressed)
+	add_child(btn_explore)
+
+
+func _make_top_btn_style(bg: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = Color(0.5, 0.8, 1, 0.4)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(8)
+	return sb
+
+
+func _on_map_expand_pressed() -> void:
+	# 每次扩大 +2 列 +2 行；费用随扩大次数递增（500/1000/1500...）
+	var expansions: int = maxi(0, (BuildingSystem.GRID_W - BuildingSystem.BuildingData.DEFAULT_GRID_W) / 2)
+	var cost: int = EXPAND_COST_BASE * (expansions + 1)
+	if GameState.gold < cost:
+		info_hint.text = "金币不足：扩大地图需要 %d 金币（当前 %d）" % [cost, int(GameState.gold)]
+		return
+	GameState.add_gold(-cost)
+	BuildingSystem.expand_grid(2, 2)
+	info_hint.text = "地图已扩大至 %d×%d（花费 %d 金币），可用滚轮缩放" % [
+		BuildingSystem.GRID_W, BuildingSystem.GRID_H, cost]
+
+
+func _on_explore_pressed() -> void:
+	# 进入副本探索界面（攻城系统，见设计文档 3.11 副本与攻城）
+	get_tree().change_scene_to_file("res://scenes/ui/instance/instance_map.tscn")
 
 
 # === 菜单选择 ===
@@ -115,6 +177,15 @@ func _on_hover_changed(cell: Vector2i) -> void:
 
 
 # === 点击 ===
+
+func _on_drag_place_requested(cell: Vector2i) -> void:
+	## 左键按住拖动连续建造：划过可建区域自动放置（不改变选中态）
+	if selected_item.is_empty() or BuildingSystem.is_obstacle(cell):
+		return
+	if BuildingSystem.place_item(cell, selected_item["id"]):
+		grid_view.place_animations["%d,%d" % [cell.x, cell.y]] = 0.0
+		grid_view.queue_redraw()
+
 
 func _on_cell_clicked(cell: Vector2i) -> void:
 	if cell.x < 0:
