@@ -63,13 +63,10 @@ static func _build_residence(root: Node3D, tw: float, td: float, cellf: float, b
 			Vector3(0, cellf * 0.11, td * 0.53))
 	_add_box(root, tw * 0.26, cellf * 0.04, cellf * 0.18, base.darkened(0.15),
 			Vector3(0, cellf * 0.26, td * 0.54))
-	# 坡屋顶 + 屋脊
-	var roof := _prism(tw * 1.04, cellf * 0.3, td * 1.04, base.darkened(0.22))
-	roof.position = Vector3(0, body_h + cellf * 0.15, 0)
-	roof.rotation_degrees = Vector3(0, 0, 90)
+	# 双坡人字形屋顶（屋脊沿 X，SurfaceTool 手工构建，法线朝外）
+	var roof := _gable_roof(tw * 1.04, td * 1.04, cellf * 0.3, base.darkened(0.22))
+	roof.position = Vector3(0, body_h, 0)
 	root.add_child(roof)
-	_add_box(root, tw * 1.04, cellf * 0.06, cellf * 0.08, base.darkened(0.35),
-			Vector3(0, body_h + cellf * 0.3, 0))
 
 
 # ========== 办公楼：玻璃幕墙写字楼（四面幕墙+楼板线+竖向楣条+屋顶机房） ==========
@@ -258,11 +255,28 @@ static func _make_mat(color: Color, roughness: float = 0.75, metallic: float = 0
 	return m
 
 
-static func _prism(sx: float, sy: float, sz: float, color: Color) -> MeshInstance3D:
+## 双坡人字形屋顶：屋脊沿 X 方向，两个坡面 + 两端山墙三角形（SurfaceTool 构建，法线朝外）
+static func _gable_roof(tw: float, td: float, rh: float, color: Color) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hx: float = tw * 0.5
+	var hz: float = td * 0.5
+	# 屋檐四角 / 屋脊两端
+	var a := Vector3(-hx, 0, -hz); var b := Vector3(hx, 0, -hz)
+	var c := Vector3(hx, 0, hz);  var d := Vector3(-hx, 0, hz)
+	var e := Vector3(-hx, rh, 0); var f := Vector3(hx, rh, 0)
+	# 前坡（朝 +Z）：d-c-f / d-f-e
+	st.add_vertex(d); st.add_vertex(c); st.add_vertex(f)
+	st.add_vertex(d); st.add_vertex(f); st.add_vertex(e)
+	# 后坡（朝 -Z）：a-f-b / a-e-f
+	st.add_vertex(a); st.add_vertex(f); st.add_vertex(b)
+	st.add_vertex(a); st.add_vertex(e); st.add_vertex(f)
+	# 山墙（朝 +X）：b-f-c；山墙（朝 -X）：a-d-e
+	st.add_vertex(b); st.add_vertex(f); st.add_vertex(c)
+	st.add_vertex(a); st.add_vertex(d); st.add_vertex(e)
+	st.generate_normals()
 	var mi := MeshInstance3D.new()
-	var prism := PrismMesh.new()
-	prism.size = Vector3(sx, sy, sz)
-	mi.mesh = prism
+	mi.mesh = st.commit()
 	mi.material_override = _make_mat(color)
 	return mi
 
