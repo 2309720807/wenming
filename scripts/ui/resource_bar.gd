@@ -33,13 +33,16 @@ func _ready() -> void:
 
 
 func _build() -> void:
+	# 左右留白需用 MarginContainer 包裹（HBoxContainer 无 margin 常量）
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	add_child(margin)
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 24)
-	hbox.add_theme_constant_override("margin_left", 18)
-	hbox.add_theme_constant_override("margin_right", 18)
-	hbox.add_theme_constant_override("margin_top", 5)
-	hbox.add_theme_constant_override("margin_bottom", 5)
-	add_child(hbox)
+	margin.add_child(hbox)
 
 	_name_label = _make_stat(hbox, "引导者", Color(0.4, 0.82, 1, 1), 15)
 	_add_sep(hbox)
@@ -72,7 +75,7 @@ func _add_sep(parent: HBoxContainer) -> void:
 	parent.add_child(sep)
 
 
-func _update_all() -> void:
+func _update_all(_arg1: Variant = null, _arg2: Variant = null) -> void:
 	var player_display: String = GameState.player_name
 	if player_display.is_empty():
 		player_display = "引导者"

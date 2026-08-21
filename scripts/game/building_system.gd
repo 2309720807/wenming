@@ -40,14 +40,39 @@ var base_happiness: int = 0
 
 var _actions: BuildingActions
 
+# 地图滚轮缩放比例（跨场景保持 + settings.cfg 跨启动记忆，见 set_map_zoom）
+var map_zoom: float = 1.0
+const MAP_ZOOM_MIN: float = 0.6
+const MAP_ZOOM_MAX: float = 1.8
+const SETTINGS_PATH: String = "user://settings.cfg"
+
 
 func _ready() -> void:
+	_load_settings()
 	_load_data()
 	grid = BuildingGrid.init_grid(GRID_W, GRID_H)
 	BuildingGrid.generate_obstacles(grid, obstacles_data, GRID_W, GRID_H)
 	_snapshot_base_stats()
 	_actions = BuildingActions.new(self)
 	grid_changed.emit(Vector2i.ZERO)
+
+
+## 设置地图缩放比例并记忆（跨场景切换保持，跨启动恢复）
+func set_map_zoom(value: float) -> void:
+	map_zoom = clampf(value, MAP_ZOOM_MIN, MAP_ZOOM_MAX)
+	_save_settings()
+
+
+func _load_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		map_zoom = clampf(float(cfg.get_value("display", "map_zoom", 1.0)), MAP_ZOOM_MIN, MAP_ZOOM_MAX)
+
+
+func _save_settings() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("display", "map_zoom", map_zoom)
+	cfg.save(SETTINGS_PATH)
 
 
 func _load_data() -> void:

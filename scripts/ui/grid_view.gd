@@ -36,6 +36,8 @@ const PEOPLE_MAX: int = 24
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# 恢复地图缩放比例（跨场景/跨启动记忆，见 BuildingSystem.map_zoom）
+	zoom = BuildingSystem.map_zoom
 	# 建造/完工/升级/拆除特效粒子（数据层信号驱动）
 	BuildingSystem.building_placed.connect(func(cell: Vector2i, _id: String) -> void:
 		_spawn_build_particles(cell, "place"))
@@ -502,8 +504,10 @@ func _cell() -> float: return float(BuildingSystem.cell_size) * zoom
 
 
 func set_zoom(new_zoom: float) -> void:
-	## 滚轮缩放地图（0.6x ~ 1.8x），网格以中央区域中心为锚点缩放
+	## 滚轮缩放地图（0.6x ~ 1.8x），网格以中央区域中心为锚点缩放；
+	## 同步 BuildingSystem.map_zoom 实现跨场景/跨启动记忆
 	zoom = clampf(new_zoom, ZOOM_MIN, ZOOM_MAX)
+	BuildingSystem.set_map_zoom(zoom)
 	queue_redraw()
 
 
