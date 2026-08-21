@@ -45,6 +45,20 @@ var _camera: Camera3D
 var _ground_root: Node3D
 var _object_root: Node3D
 var _highlight: MeshInstance3D  # 悬停高亮格
+var _sun: DirectionalLight3D    # 日光（东升西落）
+var _moon: DirectionalLight3D   # 月光（夜晚补光）
+var _sky: WorldEnvironment      # 天空环境（昼夜色渐变）
+
+# === 昼夜系统 ===
+const DAY_LENGTH: float = 90.0          # 现实 90 秒 = 游戏一昼夜（随 GameState 游戏时间流逝）
+const SUN_MAX_ELEV: float = 0.62        # 太阳最高仰角（sin 弧度 ≈ 35.5°）
+const MOON_MAX_ELEV: float = 0.55       # 月亮最高仰角
+const SUN_WARM: Color = Color(1.0, 0.92, 0.78)    # 黄昏暖橙
+const SUN_NOON: Color = Color(1.0, 0.98, 0.92)    # 正午暖白
+const MOON_COLOR: Color = Color(0.62, 0.72, 1.0)  # 月亮冷蓝白
+const NIGHT_SKY: Color = Color(0.008, 0.015, 0.045)  # 深夜天空
+const DUSK_SKY: Color = Color(0.45, 0.28, 0.2)     # 黄昏橙红天空
+const DAY_SKY: Color = Color(0.02, 0.05, 0.12)     # 白昼深蓝天空
 
 # === 摄像机状态 ===
 var _cam_dist: float = CAM_DIST_BASE
@@ -73,6 +87,7 @@ const PEOPLE_MAX: int = 20
 
 func _process(delta: float) -> void:
 	_update_viewport_size()  # 每帧同步子视口分辨率（父级 scale 变化不触发 TRANSFORM_CHANGED，轮询最可靠）
+	_update_day_night(delta)
 	_flash_t += delta
 	_tick_particles(delta)
 	_tick_people(delta)
@@ -135,12 +150,18 @@ func _build_3d_world() -> void:
 	_world = Node3D.new()
 	_world.name = "World3D"
 	vp.add_child(_world)
-	# 光照（主光 + 补光 + 环境）
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-52, -38, 0)
-	sun.light_energy = 1.1
-	sun.shadow_enabled = true
-	_world.add_child(sun)
+	# 昼夜光照：太阳（暖光,随游戏时间东升西落）+ 月亮（冷光补光）+ 环境
+	_sun = DirectionalLight3D.new()
+	_sun.rotation_degrees = Vector3(-52, -38, 0)
+	_sun.light_energy = 1.1
+	_sun.light_color = Color(1.0, 0.98, 0.92)
+	_sun.shadow_enabled = true
+	_world.add_child(_sun)
+	_moon = DirectionalLight3D.new()
+	_moon.light_energy = 0.0
+	_moon.light_color = Color(0.6, 0.72, 1.0)
+	_moon.shadow_enabled = true
+	_world.add_child(_moon)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-30, 130, 0)
 	fill.light_energy = 0.35
@@ -154,6 +175,7 @@ func _build_3d_world() -> void:
 	sky.ambient_light_color = Color(0.45, 0.6, 0.9)
 	sky.ambient_light_energy = 0.6
 	env.environment = sky
+	_sky = env
 	_world.add_child(env)
 	# 地面与物体根节点
 	_ground_root = Node3D.new()
@@ -462,6 +484,54 @@ func _update_camera() -> void:
 	_camera.look_at(_cam_target, Vector3.UP)
 	# 视角记忆（跨场景/跨启动，写入 settings.cfg）
 	BuildingSystem.set_map_view(_yaw, _pitch, _cam_target)
+
+
+## 昼夜光影：太阳/月亮按游戏时间东升西落（方位 360° + 仰角正弦曲线）
+## 时间轴 t∈[0,1)：t=0 日出 → t=0.25 正午 → t=0.5 日落 → t=0.75 午夜 → 回归
+func _update_day_night(_delta: float) -> void:
+	if _sun == null or _moon == null:
+		return
+	var t: float = fposmod(TimeManager.game_time * 60.0, DAY_LENGTH) / DAY_LENGTH  # 虚拟秒→昼夜相位
+	# --- 太阳 ---
+	var sun_phase: float = t * 2.0  # 0~1 为白昼，1~2 为夜晚
+	var sun_up: bool = sun_phase <= 1.0
+	if sun_up:
+		# 日出=0（东）→ 正午=0.5（南天顶）→ 日落=1（西）
+		var az: float = sun_phase * PI           # 方位角 0..π（东→西）
+		var elev: float = sin(sun_phase * PI) * SUN_MAX_ELEV
+		_sun.rotation_degrees = Vector3(rad_to_deg(elev) - 90.0, lip_deg(az, -90.0, 90.0), 0.0)
+		_sun.light_energy = 1.1 * (0.35 + 0.65 * sin(sun_phase * PI))
+		_sun.light_color = SUN_NOON.lerp(SUN_WARM, 1.0 - sin(sun_phase * PI))
+	else:
+		_sun.light_energy = 0.0
+	# --- 月亮 ---
+	var moon_phase: float = fposmod(sun_phase, 1.0)
+	var moon_up: bool = not sun_up
+	if moon_up:
+		var maz: float = moon_phase * PI
+		var melev: float = sin(moon_phase * PI) * MOON_MAX_ELEV
+		_moon.rotation_degrees = Vector3(rad_to_deg(melev) - 90.0, lip_deg(maz, -90.0, 90.0), 0.0)
+		_moon.light_energy = 0.4 * sin(moon_phase * PI)
+	else:
+		_moon.light_energy = 0.0
+	# --- 天空/环境渐变 ---
+	var dayness: float = clampf(sin(sun_phase * PI) if sun_up else 0.0, 0.0, 1.0)
+	var sky_col: Color
+	var ambient: float
+	if sun_up:
+		sky_col = DAY_SKY.lerp(DUSK_SKY, 1.0 - dayness)
+		ambient = 0.35 + 0.35 * dayness
+	else:
+		sky_col = DUSK_SKY.lerp(NIGHT_SKY, clampf(1.0 - moon_phase * 2.0, 0.0, 1.0))
+		ambient = 0.12 + 0.1 * sin(moon_phase * PI)
+	_sky.environment.background_color = sky_col
+	_sky.environment.ambient_light_color = sky_col.lightened(0.25)
+	_sky.environment.ambient_light_energy = ambient
+
+
+## 角度计算辅助：相位→方位角（东为 -90°，西为 +90°，即绕 Y 方向）
+func lip_deg(phase: float, lo: float, hi: float) -> float:
+	return lo + (hi - lo) * phase
 
 
 func _min_zoom() -> float:

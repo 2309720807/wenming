@@ -9,6 +9,74 @@ extends RefCounted
 
 const ELF: float = 0.86  # 建筑占地系数（建筑间留缝）
 
+# === 程序化墙面纹理缓存（同图案同色复用，避免每建筑重建 Image） ===
+static var _tex_cache: Dictionary = {}
+
+
+## 生成砖墙纹理（深灰砖缝 + 浅色砖块，交错排列），256×256
+static func _brick_texture(brick: Color, mortar: Color) -> ImageTexture:
+	var key: String = "brick|%s|%s" % [brick, mortar]
+	if _tex_cache.has(key):
+		return _tex_cache[key]
+	var img := Image.create(256, 256, false, Image.FORMAT_RGBA8)
+	img.fill(mortar)
+	var bw: int = 64   # 砖块宽（像素）
+	var bh: int = 32   # 砖块高
+	for row: int in range(256 / bh):
+		var off: int = bw / 2 if row % 2 == 1 else 0
+		for col: int in range(256 / bw + 1):
+			var x: int = col * bw - off
+			img.fill_rect(Rect2i(x, row * bh + 1, bw - 2, bh - 2), brick)
+	var tex := ImageTexture.create_from_image(img)
+	_tex_cache[key] = tex
+	return tex
+
+
+## 生成瓷砖墙面纹理（细缝网格，白色/浅色瓷砖），256×256
+static func _tile_texture(tile: Color, seam: Color) -> ImageTexture:
+	var key: String = "tile|%s|%s" % [tile, seam]
+	if _tex_cache.has(key):
+		return _tex_cache[key]
+	var img := Image.create(256, 256, false, Image.FORMAT_RGBA8)
+	img.fill(seam)
+	var tw: int = 32
+	for row: int in range(256 / tw + 1):
+		for col: int in range(256 / tw + 1):
+			img.fill_rect(Rect2i(col * tw + 1, row * tw + 1, tw - 2, tw - 2), tile)
+	var tex := ImageTexture.create_from_image(img)
+	_tex_cache[key] = tex
+	return tex
+
+
+## 生成玻璃幕墙纹理（竖向窗格条纹，深色玻璃 + 亮竖条），256×256
+static func _curtain_texture(glass: Color, mullion: Color) -> ImageTexture:
+	var key: String = "curtain|%s|%s" % [glass, mullion]
+	if _tex_cache.has(key):
+		return _tex_cache[key]
+	var img := Image.create(256, 256, false, Image.FORMAT_RGBA8)
+	img.fill(glass)
+	var mw: int = 16  # 竖楣条宽
+	for col: int in range(256 / mw + 1):
+		img.fill_rect(Rect2i(col * mw, 0, 3, 256), mullion)
+	# 横向楼板线
+	for row: int in range(16):
+		img.fill_rect(Rect2i(0, row * 40 + 38, 256, 3), mullion)
+	var tex := ImageTexture.create_from_image(img)
+	_tex_cache[key] = tex
+	return tex
+
+
+## 带纹理的标准材质（albedo_texture + 基色调制）
+static func _make_tex_mat(color: Color, tex: ImageTexture, metallic: float = 0.05, roughness: float = 0.8) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = color
+	m.albedo_texture = tex
+	m.metallic = metallic
+	m.roughness = roughness
+	if color.a < 0.99:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	return m
+
 
 ## 主入口：按物品配置生成建筑节点（根节点原点 = 建筑中心格，Y=0 地面）
 static func build(item: Dictionary, level: int, cellf: float) -> Node3D:
@@ -48,9 +116,9 @@ static func _build_residence(root: Node3D, tw: float, td: float, cellf: float, b
 	var roof_c := Color(0.56, 0.34, 0.28)   # 砖红屋顶
 	var floors: int = 2 + mini(level, 4)  # 2~6 层（升级长高）
 	var body_h: float = cellf * (0.5 + 0.28 * floors)
-	# 主体 + 深灰基座
-	_add_box(root, tw, body_h, td, base, Vector3(0, body_h * 0.5, 0))
-	_add_box(root, tw * 1.02, cellf * 0.18, td * 1.02, base_c, Vector3(0, cellf * 0.09, 0))
+	# 主体（绿墙砖纹）+ 深灰基座
+	_add_box_tex(root, tw, body_h, td, base, _brick_texture(base.lightened(0.18), base.darkened(0.32)), Vector3(0, body_h * 0.5, 0))
+	_add_box_tex(root, tw * 1.02, cellf * 0.18, td * 1.02, base_c, _brick_texture(base_c.lightened(0.1), base_c.darkened(0.2)), Vector3(0, cellf * 0.09, 0))
 	# 每层：正面两窗（白框+蓝玻）一阳台、背面两窗、侧面一窗
 	for f: int in range(floors):
 		var yy: float = cellf * (0.36 + 0.28 * f)
@@ -98,8 +166,9 @@ static func _build_office(root: Node3D, tw: float, td: float, cellf: float, base
 	var tank_c := Color(0.6, 0.72, 0.85)       # 水箱蓝灰
 	var floors: int = 3 + mini(level, 4)  # 3~7 层
 	var body_h: float = cellf * (0.4 + 0.24 * floors)
-	# 核心筒（比幕墙小一圈）
-	_add_box(root, tw * 0.8, body_h, td * 0.8, core_c, Vector3(0, body_h * 0.5, 0))
+	# 核心筒（比幕墙小一圈，玻璃幕墙纹理）
+	_add_box_tex(root, tw * 0.8, body_h, td * 0.8, core_c,
+			_curtain_texture(core_c.lightened(0.12), core_c.darkened(0.3)), Vector3(0, body_h * 0.5, 0))
 	# 玻璃幕墙（四面半透明）
 	_add_box_mat(root, tw, body_h, cellf * 0.04, glass, Vector3(0, body_h * 0.5, td * 0.42))
 	_add_box_mat(root, tw, body_h, cellf * 0.04, glass, Vector3(0, body_h * 0.5, -td * 0.42))
@@ -135,9 +204,11 @@ static func _build_school(root: Node3D, tw: float, td: float, cellf: float, base
 	var cap_c := Color(0.3, 0.32, 0.38)       # 深灰塔帽
 	var clock_c := Color(1.0, 0.92, 0.55)     # 金色钟盘
 	var wing_h: float = cellf * (0.55 + 0.18 * mini(level + 1, 4))
-	# L 形两翼 + 红砖腰线
-	_add_box(root, tw * 0.62, wing_h, td * 0.5, wall_c, Vector3(-tw * 0.17, wing_h * 0.5, -td * 0.2))
-	_add_box(root, tw * 0.34, wing_h, td * 0.92, wall_c, Vector3(tw * 0.3, wing_h * 0.5, 0))
+	# L 形两翼（米黄砖纹）+ 红砖腰线
+	_add_box_tex(root, tw * 0.62, wing_h, td * 0.5, wall_c,
+			_brick_texture(wall_c.lightened(0.06), wall_c.darkened(0.22)), Vector3(-tw * 0.17, wing_h * 0.5, -td * 0.2))
+	_add_box_tex(root, tw * 0.34, wing_h, td * 0.92, wall_c,
+			_brick_texture(wall_c.lightened(0.06), wall_c.darkened(0.22)), Vector3(tw * 0.3, wing_h * 0.5, 0))
 	_add_box(root, tw * 0.62, cellf * 0.12, td * 0.52, brick_c, Vector3(-tw * 0.17, cellf * 0.06, -td * 0.2))
 	# 每层窗格（白框+蓝玻）
 	for f: int in range(1 + mini(level, 3)):
@@ -194,9 +265,11 @@ static func _build_hospital(root: Node3D, tw: float, td: float, cellf: float, ba
 	var pad_c := Color(0.45, 0.47, 0.52)      # 停机坪灰
 	var floors: int = 2 + mini(level, 3)  # 2~5 层
 	var body_h: float = cellf * (0.55 + 0.26 * floors)
-	# 白墙主体 + 浅灰基座
-	_add_box(root, tw, body_h, td, wall_c, Vector3(0, body_h * 0.5, 0))
-	_add_box(root, tw, cellf * 0.2, td, sill_c, Vector3(0, cellf * 0.1, 0))
+	# 白墙主体（瓷砖纹理）+ 浅灰基座
+	_add_box_tex(root, tw, body_h, td, wall_c,
+			_tile_texture(wall_c.lightened(0.02), wall_c.darkened(0.12)), Vector3(0, body_h * 0.5, 0))
+	_add_box_tex(root, tw, cellf * 0.2, td, sill_c,
+			_tile_texture(sill_c.lightened(0.03), sill_c.darkened(0.15)), Vector3(0, cellf * 0.1, 0))
 	# 每层浅蓝窗带（三面）+ 白色窗台线
 	for f: int in range(floors):
 		var yy: float = cellf * (0.36 + 0.26 * f)
@@ -238,8 +311,9 @@ static func _build_finance(root: Node3D, tw: float, td: float, cellf: float, bas
 	var glass_dark := Color(0.25, 0.38, 0.62, 0.85)  # 深蓝玻璃幕
 	var ledge_c := Color(0.3, 0.3, 0.34)      # 深灰檐
 	var gold_c := base                          # 金主色
-	# 裙楼
-	_add_box(root, tw, cellf * 0.5, td, podium_c, Vector3(0, cellf * 0.25, 0))
+	# 裙楼（深褐金砖纹）
+	_add_box_tex(root, tw, cellf * 0.5, td, podium_c,
+			_brick_texture(podium_c.lightened(0.1), podium_c.darkened(0.25)), Vector3(0, cellf * 0.25, 0))
 	# 三阶塔身（下宽上窄阶梯收分，参考金茂大厦）
 	var seg_w: Array[float] = [0.86, 0.62, 0.4]
 	var seg_h: Array[float] = [cellf * (0.5 + 0.1 * level), cellf * (0.5 + 0.08 * level), cellf * (0.4 + 0.06 * level)]
@@ -247,7 +321,8 @@ static func _build_finance(root: Node3D, tw: float, td: float, cellf: float, bas
 	for s: int in range(3):
 		var sw: float = tw * seg_w[s]
 		var sd: float = td * seg_w[s]
-		_add_box(root, sw, seg_h[s], sd, gold_c.darkened(0.05 * s), Vector3(0, y_pos + seg_h[s] * 0.5, 0))
+		_add_box_tex(root, sw, seg_h[s], sd, gold_c.darkened(0.05 * s),
+				_curtain_texture(gold_c.darkened(0.02 * s), gold_c.darkened(0.3)), Vector3(0, y_pos + seg_h[s] * 0.5, 0))
 		# 每段深蓝玻璃竖条（正面）
 		var cols: int = 3 + s * 2
 		for i: int in range(cols):
@@ -280,6 +355,11 @@ static func _build_generic(root: Node3D, tw: float, td: float, cellf: float, bas
 
 static func _add_box(parent: Node3D, sx: float, sy: float, sz: float, color: Color, pos: Vector3) -> void:
 	_add_box_mat(parent, sx, sy, sz, _make_mat(color), pos)
+
+
+## 带纹理的盒子（砖面/幕墙/瓷砖贴图）
+static func _add_box_tex(parent: Node3D, sx: float, sy: float, sz: float, color: Color, tex: ImageTexture, pos: Vector3) -> void:
+	_add_box_mat(parent, sx, sy, sz, _make_tex_mat(color, tex), pos)
 
 
 static func _add_box_mat(parent: Node3D, sx: float, sy: float, sz: float, mat: StandardMaterial3D, pos: Vector3) -> void:
