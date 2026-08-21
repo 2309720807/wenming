@@ -152,6 +152,75 @@ func reset_state() -> void:
 	grid_changed.emit(Vector2i.ZERO)
 
 
+## 统计区域内可拆除对象（只读，供确认框显示）：{buildings, refund, obstacles, clear_cost}
+func preview_demolish(rect: Rect2i) -> Dictionary:
+	var result := {"buildings": 0, "refund": 0.0, "obstacles": 0, "clear_cost": 0.0}
+	for key: String in placed:
+		var anchor: Vector2i = BuildingGrid.key_to_cell(key)
+		if anchor.x >= rect.position.x and anchor.x < rect.position.x + rect.size.x and anchor.y >= rect.position.y and anchor.y < rect.position.y + rect.size.y:
+			var p: Dictionary = placed[key]
+			var item: Dictionary = get_item(p["item_id"])
+			result["buildings"] += 1
+			result["refund"] += BuildingBalance.get_demolish_refund(item, int(p["level"]))
+	var anchors: Array[Vector2i] = []
+	for x: int in range(maxi(0, rect.position.x), mini(GRID_W, rect.position.x + rect.size.x)):
+		for y: int in range(maxi(0, rect.position.y), mini(GRID_H, rect.position.y + rect.size.y)):
+			var mark: String = str(grid[x][y])
+			if not mark.begins_with("obs:"):
+				continue
+			var anchor: Vector2i = BuildingGrid.find_obstacle_anchor(grid, obstacles_data, Vector2i(x, y), GRID_W, GRID_H)
+			if anchor.x < 0 or anchors.has(anchor):
+				continue
+			var obs: Dictionary = get_obstacle_at(anchor)
+			if obs.is_empty():
+				continue
+			anchors.append(anchor)
+			result["obstacles"] += 1
+			result["clear_cost"] += float(obs.get("clear_cost", 0))
+	return result
+
+
+## 区域内批量拆除：建筑立即拆除（返还 60% 建造+升级投入），障碍立即清除（扣清障费）
+func batch_demolish(rect: Rect2i) -> Dictionary:
+	var result: Dictionary = preview_demolish(rect)
+	var do_clear: bool = GameState.gold >= float(result["clear_cost"])
+	var removed: Array[String] = []
+	for key: String in placed:
+		var anchor: Vector2i = BuildingGrid.key_to_cell(key)
+		if anchor.x >= rect.position.x and anchor.x < rect.position.x + rect.size.x and anchor.y >= rect.position.y and anchor.y < rect.position.y + rect.size.y:
+			removed.append(key)
+	for key: String in removed:
+		var p: Dictionary = placed[key]
+		var anchor: Vector2i = BuildingGrid.key_to_cell(key)
+		BuildingGrid.release_cells(grid, anchor, int(p["width"]), int(p["height"]))
+		placed.erase(key)
+		building_demolished.emit(anchor, p["item_id"])
+	if result["buildings"] > 0:
+		GameState.add_gold(float(result["refund"]))
+	if do_clear and result["obstacles"] > 0:
+		var anchors: Array[Vector2i] = []
+		for x: int in range(maxi(0, rect.position.x), mini(GRID_W, rect.position.x + rect.size.x)):
+			for y: int in range(maxi(0, rect.position.y), mini(GRID_H, rect.position.y + rect.size.y)):
+				var mark: String = str(grid[x][y])
+				if not mark.begins_with("obs:"):
+					continue
+				var anchor: Vector2i = BuildingGrid.find_obstacle_anchor(grid, obstacles_data, Vector2i(x, y), GRID_W, GRID_H)
+				if anchor.x < 0 or anchors.has(anchor):
+					continue
+				var obs: Dictionary = get_obstacle_at(anchor)
+				if obs.is_empty():
+					continue
+				anchors.append(anchor)
+				BuildingGrid.release_cells(grid, anchor, int(obs.get("width", 1)), int(obs.get("height", 1)))
+				obstacle_cleared.emit(anchor)
+		GameState.add_gold(-float(result["clear_cost"]))
+	else:
+		result["obstacles"] = 0
+		result["clear_cost"] = 0.0
+	grid_changed.emit(Vector2i.ZERO)
+	return result
+
+
 func expand_grid(extra_w: int, extra_h: int) -> void:
 	## 扩大地图：右侧追加列、下侧追加行（消费金币由 UI 层处理），
 	## 地图尺寸随存档持久化（restore_state 以存档网格尺寸为准）

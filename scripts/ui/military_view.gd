@@ -208,15 +208,19 @@ func _refresh_inventory() -> void:
 		desc.add_theme_font_size_override("font_size", 12)
 		desc.add_theme_color_override("font_color", Color(0.72, 0.8, 0.92, 0.9))
 		vbox.add_child(desc)
-		var make_btn := Button.new()
-		make_btn.text = "制造 ×1"
-		make_btn.custom_minimum_size = Vector2(0, 34)
-		make_btn.add_theme_font_override("font", FONT_BOLD)
-		make_btn.add_theme_font_size_override("font_size", 13)
-		make_btn.pressed.connect(func() -> void:
-			var result: Dictionary = MilitarySystem.manufacture(unit_id)
-			_info_label.text = result["message"])
-		vbox.add_child(make_btn)
+		# 批量制造：×1 / ×5 / ×10（资源不足自动停止）
+		var make_row := HBoxContainer.new()
+		make_row.add_theme_constant_override("separation", 8)
+		vbox.add_child(make_row)
+		for count: int in [1, 5, 10]:
+			var make_btn := Button.new()
+			make_btn.text = "制造 ×%d" % count
+			make_btn.custom_minimum_size = Vector2(0, 34)
+			make_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			make_btn.add_theme_font_override("font", FONT_BOLD)
+			make_btn.add_theme_font_size_override("font_size", 13)
+			make_btn.pressed.connect(_make_batch.bind(unit_id, count))
+			make_row.add_child(make_btn)
 		_inventory_box.add_child(card)
 
 
@@ -264,6 +268,23 @@ func _refresh_defense_panel() -> void:
 		_info_label.text = result["message"])
 	_defense_panel.add_child(expand_btn)
 	_refresh_base_info()
+
+
+func _make_batch(unit_id: String, count: int) -> void:
+	## 批量制造：连续制造 count 个，资源不足时自动停止
+	var made: int = 0
+	for i: int in range(count):
+		var result: Dictionary = MilitarySystem.manufacture(unit_id)
+		if result["ok"]:
+			made += 1
+		else:
+			if made == 0:
+				_info_label.text = result["message"]
+			break
+	if made > 0:
+		_info_label.text = "已批量制造「%s」×%d（库存 %d）" % [
+			MilitarySystem.units_data.get(unit_id, {}).get("name", unit_id),
+			made, int(MilitarySystem.inventory.get(unit_id, 0))]
 
 
 func _on_inventory_btn_pressed(unit_id: String) -> void:

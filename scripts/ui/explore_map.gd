@@ -56,6 +56,7 @@ func _connect_signals() -> void:
 	grid_view.cell_clicked.connect(_on_cell_clicked)
 	grid_view.preview_cancel_requested.connect(_on_preview_cancel_requested)
 	grid_view.drag_place_requested.connect(_on_drag_place_requested)
+	grid_view.demolition_requested.connect(_on_demolition_requested)
 	BuildingSystem.grid_changed.connect(func(_cell: Vector2i) -> void: grid_view.queue_redraw())
 	BuildingSystem.building_completed.connect(_feedback.on_completed)
 	BuildingSystem.building_upgraded.connect(_feedback.on_upgraded)
@@ -83,6 +84,19 @@ func _build_top_buttons() -> void:
 	btn_map.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.07, 0.22, 0.42, 1.0)))
 	btn_map.pressed.connect(_on_map_expand_pressed)
 	add_child(btn_map)
+	# 批量拆除按钮：框选区域批量拆除建筑与障碍（进入拆除模式后左键拖动框选）
+	var btn_demolish := Button.new()
+	btn_demolish.name = "BtnBatchDemolish"
+	btn_demolish.text = "🧹 拆除"
+	btn_demolish.custom_minimum_size = Vector2(88, 34)
+	btn_demolish.position = Vector2(size.x - 292, 8)
+	btn_demolish.add_theme_font_override("font", FONT_BTN)
+	btn_demolish.add_theme_font_size_override("font_size", 14)
+	btn_demolish.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.5, 0.25, 0.2, 0.9)))
+	btn_demolish.add_theme_stylebox_override("hover", _make_top_btn_style(Color(0.7, 0.35, 0.28, 1.0)))
+	btn_demolish.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.35, 0.16, 0.12, 1.0)))
+	btn_demolish.pressed.connect(_on_demolish_mode_pressed)
+	add_child(btn_demolish)
 	# 探索按钮：进入副本探索界面（攻城系统入口，见设计文档 3.11）
 	var btn_explore := Button.new()
 	btn_explore.name = "BtnInstanceExplore"
@@ -177,6 +191,41 @@ func _on_hover_changed(cell: Vector2i) -> void:
 
 
 # === 点击 ===
+
+func _on_demolish_mode_pressed() -> void:
+	## 切换批量拆除模式（再次点击或右键退出）
+	grid_view.set_demolish_mode(not grid_view.demolish_mode)
+	if grid_view.demolish_mode:
+		_on_preview_cancel_requested()
+		info_hint.text = "批量拆除模式：左键拖动框选区域（建筑返还、障碍扣清障费），右键退出"
+	else:
+		info_hint.text = BuildingInfo.HINT_BASE
+
+
+func _on_demolition_requested(rect: Rect2i) -> void:
+	## 框选完成：统计区域内对象并确认后批量拆除
+	var preview: Dictionary = BuildingSystem.preview_demolish(rect)
+	if int(preview["buildings"]) == 0 and int(preview["obstacles"]) == 0:
+		info_hint.text = "框选区域内没有可拆除对象"
+		return
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "批量拆除"
+	dialog.dialog_text = "框选区域内：\n建筑 %d 座（返还 %d 金币）\n障碍 %d 个（清障费 %d 金币）\n\n确定执行批量拆除吗？" % [
+		int(preview["buildings"]), int(preview["refund"]),
+		int(preview["obstacles"]), int(preview["clear_cost"])]
+	dialog.ok_button_text = "执行拆除"
+	dialog.cancel_button_text = "取消"
+	dialog.confirmed.connect(func() -> void:
+		var result: Dictionary = BuildingSystem.batch_demolish(rect)
+		info_hint.text = "批量拆除完成：建筑 %d 座（返还 %d 金币）、障碍 %d 个（清障费 %d）" % [
+			int(result["buildings"]), int(result["refund"]),
+			int(result["obstacles"]), int(result["clear_cost"])])
+	dialog.close_requested.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.confirmed.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered()
+
 
 func _on_drag_place_requested(cell: Vector2i) -> void:
 	## 左键按住拖动连续建造：划过可建区域自动放置（不改变选中态）

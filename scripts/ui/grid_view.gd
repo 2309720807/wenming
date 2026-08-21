@@ -9,6 +9,8 @@ signal hover_changed(cell: Vector2i)
 signal cell_clicked(cell: Vector2i)
 signal preview_cancel_requested  # 右键取消预选建造
 signal drag_place_requested(cell: Vector2i)  # 左键拖动连续建造
+signal demolition_requested(rect: Rect2i)   # 批量拆除框选完成
+signal demolish_mode_changed(on: bool)      # 拆除模式开关
 
 const ZOOM_MIN: float = 0.6
 const ZOOM_MAX: float = 1.8
@@ -16,6 +18,11 @@ const ZOOM_MAX: float = 1.8
 var zoom: float = 1.0
 var _last_drag_cell: Vector2i = Vector2i(-1, -1)
 var _mouse_left_down: bool = false  # 本地记录左键状态（拖动连续建造，兼容事件无 button_mask 的情况）
+
+# === 批量拆除框选 ===
+var demolish_mode: bool = false
+var _select_start: Vector2i = Vector2i(-1, -1)
+var _select_end: Vector2i = Vector2i(-1, -1)
 
 const FONT_BOLD: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
 const FONT_NORMAL: Font = preload("res://assets/fonts/SourceHanSansCN-Normal.ttf")
@@ -71,12 +78,40 @@ func _tick_animations(dict: Dictionary, max_time: float, delta: float) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	# 拆除模式：左键拖动框选区域，右键退出
+	if demolish_mode:
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				_select_start = _pos_to_cell(event.position)
+				_select_end = _select_start
+			else:
+				if _select_start.x >= 0 and _select_end.x >= 0:
+					demolition_requested.emit(_selection_rect())
+				_select_start = Vector2i(-1, -1)
+				_select_end = Vector2i(-1, -1)
+			queue_redraw()
+			return
+		elif event is InputEventMouseMotion:
+			if _select_start.x >= 0:
+				_select_end = _pos_to_cell(event.position)
+				queue_redraw()
+			return
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			set_demolish_mode(false)
+			return
 	if event is InputEventMouseMotion:
 		var cell: Vector2i = _pos_to_cell(event.position)
 		if cell != hover_cell:
 			hover_cell = cell
 			hover_changed.emit(cell)
 			queue_redraw()
+		# 左键按住拖动：连续建造（修复：motion 分支需合并处理，elif 会被 hover 分支吞掉）
+		if _mouse_left_down:
+			var drag_cell: Vector2i = _pos_to_cell(event.position)
+			if drag_cell.x >= 0 and drag_cell != _last_drag_cell:
+				_last_drag_cell = drag_cell
+				drag_place_requested.emit(drag_cell)
+		return
 	elif event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT:
 		_mouse_left_down = event.pressed
@@ -121,6 +156,7 @@ func _draw() -> void:
 	_draw_buildings(origin)
 	_draw_people()
 	_draw_particles()
+	_draw_selection(origin)
 	_draw_preview(origin)
 
 
@@ -428,6 +464,18 @@ func _spawn_build_particles(cell: Vector2i, kind: String) -> void:
 	queue_redraw()
 
 
+func _draw_selection(origin: Vector2) -> void:
+	# 批量拆除框选区域（红色半透明矩形）
+	if demolish_mode and _select_start.x >= 0 and _select_end.x >= 0:
+		var r: Rect2i = _selection_rect()
+		var rect := Rect2(origin + Vector2(r.position * int(_cell())),
+				Vector2(r.size * int(_cell())))
+		draw_rect(rect, Color(1, 0.35, 0.3, 0.25))
+		draw_rect(rect, Color(1, 0.35, 0.3, 0.85), false, 2.0)
+		var blink: float = 0.5 + 0.4 * sin(Time.get_ticks_msec() * 0.008)
+		draw_rect(rect, Color(1, 0.9, 0.5, blink * 0.6), false, 1.0)
+
+
 func _draw_particles() -> void:
 	for pt: Dictionary in effect_particles:
 		var alpha: float = float(pt["life"]) / float(pt["max_life"])
@@ -501,6 +549,20 @@ func _draw_people() -> void:
 # === 工具 ===
 
 func _cell() -> float: return float(BuildingSystem.cell_size) * zoom
+
+
+func set_demolish_mode(on: bool) -> void:
+	## 批量拆除模式开关：开启后左键拖动框选，右键退出
+	demolish_mode = on
+	_select_start = Vector2i(-1, -1)
+	_select_end = Vector2i(-1, -1)
+	demolish_mode_changed.emit(on)
+	queue_redraw()
+
+
+func _selection_rect() -> Rect2i:
+	return Rect2i(mini(_select_start.x, _select_end.x), mini(_select_start.y, _select_end.y),
+			abs(_select_end.x - _select_start.x) + 1, abs(_select_end.y - _select_start.y) + 1)
 
 
 func set_zoom(new_zoom: float) -> void:
