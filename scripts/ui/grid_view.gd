@@ -39,6 +39,7 @@ var completion_effects: Dictionary = {}  # "x,y" -> 已播放时长
 
 # === 3D 节点 ===
 var _viewport: SubViewport
+var _viewport_container: SubViewportContainer  # 手动管理尺寸/缩放（见 _update_viewport_size）
 var _world: Node3D
 var _camera: Camera3D
 var _ground_root: Node3D
@@ -71,6 +72,7 @@ const PEOPLE_MAX: int = 20
 
 
 func _process(delta: float) -> void:
+	_update_viewport_size()  # 每帧同步子视口分辨率（父级 scale 变化不触发 TRANSFORM_CHANGED，轮询最可靠）
 	_flash_t += delta
 	_tick_particles(delta)
 	_tick_people(delta)
@@ -115,15 +117,17 @@ func _ready() -> void:
 # ================= 3D 世界构建 =================
 
 func _build_3d_world() -> void:
-	# 子视口容器铺满本控件
+	# 子视口容器：锚点左上角，尺寸/缩放由 _update_viewport_size 手动管理
 	var vpc := SubViewportContainer.new()
-	vpc.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vpc.stretch = true
+	vpc.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	vpc.position = Vector2.ZERO
+	vpc.stretch = false  # stretch=true 时容器强制子视口 = 容器尺寸，无法手动提高渲染分辨率
 	add_child(vpc)
+	_viewport_container = vpc
 	var vp := SubViewport.new()
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	# 子视口分辨率跟随物理显示尺寸（关闭 stretch 手动管理，避免窗口放大时拉伸变模糊）
-	vpc.stretch = false
+	# 高清渲染：子视口渲染分辨率 = 布局尺寸 × 窗口缩放系数（_physical_size），
+	# 显示时容器按 1/factor 反向缩放，最终屏幕像素 = 子视口渲染像素（任意分辨率不模糊）
 	vp.size = _physical_size()
 	vpc.add_child(vp)
 	_viewport = vp
@@ -599,9 +603,14 @@ func _zoom_at(factor: float) -> void:
 
 
 func _screen_to_ground(screen_pos: Vector2) -> Vector3:
-	# Godot 4 project_ray_origin/normal 接受视口像素坐标（GridView 局部 = 子视口像素，1:1）
-	var ray_origin: Vector3 = _camera.project_ray_origin(screen_pos)
-	var ray_dir: Vector3 = _camera.project_ray_normal(screen_pos)
+	# 输入为 GridView 布局坐标；子视口渲染分辨率 = 布局 × 缩放系数（_physical_size），
+	# 射线投影需换算为子视口像素坐标（stretch=true 时两者不再 1:1）
+	var factor: float = 1.0
+	if WindowManager.has_method("current_scale_factor"):
+		factor = WindowManager.current_scale_factor()
+	var vp_px := screen_pos * factor
+	var ray_origin: Vector3 = _camera.project_ray_origin(vp_px)
+	var ray_dir: Vector3 = _camera.project_ray_normal(vp_px)
 	if absf(ray_dir.y) < 0.0001:
 		return Vector3.ZERO
 	var t: float = -ray_origin.y / ray_dir.y
@@ -982,11 +991,20 @@ func _physical_size() -> Vector2i:
 
 
 func _update_viewport_size() -> void:
-	if _viewport == null:
+	if _viewport == null or _viewport_container == null:
 		return
 	var target: Vector2i = _physical_size()
+	# 容器布局尺寸 = 子视口渲染分辨率（1 渲染像素 = 1 布局像素）
 	if target != _viewport.size:
 		_viewport.size = target
+		_viewport_container.size = Vector2(target)
+	# 反向缩放补偿：容器显示尺寸 = 布局尺寸（GridView 区域），渲染像素 = 屏幕像素
+	var factor: float = 1.0
+	if WindowManager.has_method("current_scale_factor"):
+		factor = WindowManager.current_scale_factor()
+	var inv: Vector2 = Vector2(1.0 / factor, 1.0 / factor)
+	if _viewport_container.scale != inv:
+		_viewport_container.scale = inv
 
 
 func _notification(what: int) -> void:
