@@ -62,6 +62,22 @@ var _last_drag_cell: Vector2i = Vector2i(-1, -1)
 var _select_start: Vector2i = Vector2i(-1, -1)
 var _select_end: Vector2i = Vector2i(-1, -1)
 
+# === 粒子 / 人流 / 动画状态 ===
+var _particles: Array[Dictionary] = []  # {node, vel, life, max_life, kind}
+var _people: Array[Dictionary] = []     # {node, target, speed}
+var _people_targets: Array[Vector3] = []
+var _flash_t: float = 0.0               # 金币不足红闪计时
+const PEOPLE_MAX: int = 20
+
+
+func _process(delta: float) -> void:
+	_flash_t += delta
+	_tick_particles(delta)
+	_tick_people(delta)
+	_update_construction_bars()
+	if not preview_item.is_empty():
+		_update_hover_highlight()  # 金币不足红闪需要持续刷新
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -73,10 +89,18 @@ func _ready() -> void:
 	_update_camera()
 	# 数据层信号 → 3D 重建/更新
 	BuildingSystem.grid_changed.connect(func(_c: Vector2i) -> void: _rebuild_all())
-	BuildingSystem.building_placed.connect(func(cell: Vector2i, id: String) -> void: _spawn_building(cell, id))
-	BuildingSystem.building_completed.connect(func(cell: Vector2i, id: String) -> void: _flash_building(cell, Color(1, 0.85, 0.35)))
-	BuildingSystem.building_upgraded.connect(func(cell: Vector2i, id: String, _lv: int) -> void: _flash_building(cell, Color(0.55, 0.85, 1.0)))
-	BuildingSystem.building_demolished.connect(func(cell: Vector2i, _id: String) -> void: _rebuild_all())
+	BuildingSystem.building_placed.connect(func(cell: Vector2i, id: String) -> void:
+		_spawn_building(cell, id)
+		_spawn_effect_particles(cell, "place"))
+	BuildingSystem.building_completed.connect(func(cell: Vector2i, id: String) -> void:
+		_flash_building(cell, Color(1, 0.85, 0.35))
+		_spawn_effect_particles(cell, "complete"))
+	BuildingSystem.building_upgraded.connect(func(cell: Vector2i, id: String, _lv: int) -> void:
+		_flash_building(cell, Color(0.55, 0.85, 1.0))
+		_spawn_effect_particles(cell, "upgrade"))
+	BuildingSystem.building_demolished.connect(func(cell: Vector2i, _id: String) -> void:
+		_rebuild_all()
+		_spawn_effect_particles(cell, "demolish"))
 	BuildingSystem.obstacle_cleared.connect(func(_c: Vector2i) -> void: _rebuild_all())
 
 
@@ -89,9 +113,8 @@ func _build_3d_world() -> void:
 	vpc.stretch = true
 	add_child(vpc)
 	var vp := SubViewport.new()
-	vp.msaa_3d = Viewport.MSAA_4X
-	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
-	vp.size = Vector2i(maxi(64, int(size.x)), maxi(64, int(size.y)))
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	vp.size = Vector2i(1024, 560)
 	vpc.add_child(vp)
 	_viewport = vp
 	_world = Node3D.new()
@@ -219,6 +242,12 @@ func _rebuild_all() -> void:
 	for child: Node in _object_root.get_children():
 		if child != _highlight:
 			child.queue_free()
+	for pt: Dictionary in _particles:
+		(pt["node"] as Node).queue_free()
+	_particles.clear()
+	for pp: Dictionary in _people:
+		(pp["node"] as Node).queue_free()
+	_people.clear()
 	_build_ground()
 	_build_obstacles()
 	for key: String in BuildingSystem.placed:
@@ -311,6 +340,19 @@ func _spawn_building(cell: Vector2i, item_id: String) -> void:
 	var node: Node3D = _make_building_node(item, p, cell)
 	node.name = "B_" + key
 	_object_root.add_child(node)
+	# 等级徽章（Label3D 广告牌，悬浮建筑上方，随缩放自适应字号）
+	var badge := Label3D.new()
+	badge.name = "Badge"
+	badge.text = "Lv.%d" % int(p.get("level", 1))
+	badge.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	badge.font_size = maxi(6, int(_cell_size_3d() * 0.28))
+	badge.outline_size = maxi(2, int(_cell_size_3d() * 0.03))
+	badge.outline_modulate = Color(0, 0, 0, 0.85)
+	badge.modulate = Color(1, 0.92, 0.5, 1.0)
+	badge.no_depth_test = true
+	badge.position = Vector3(0, _cell_size_3d() * 1.45, 0)
+	badge.pixel_size = 0.004
+	node.add_child(badge)
 	# 出生动画：从地面升起
 	if p.is_empty() or not p.get("completed", false):
 		node.scale = Vector3(1, 0.1, 1)
@@ -482,6 +524,10 @@ func _flash_building(cell: Vector2i, color: Color) -> void:
 	var node: Node = _object_root.get_node_or_null("B_" + key)
 	if node == null:
 		return
+	# 升级后刷新等级徽章
+	var badge: Label3D = node.get_node_or_null("Badge") as Label3D
+	if badge != null:
+		badge.text = "Lv.%d" % int(BuildingSystem.placed.get(key, {}).get("level", 1))
 	# 完工/升级闪光：金色脉冲环
 	var ring := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
@@ -604,15 +650,24 @@ func _gui_input(event: InputEvent) -> void:
 			_panning_view = false
 		return
 	if event is InputEventMouseMotion:
-		# 左键按住超过阈值：切换为旋转视角（不再视为单击）
+		# 未选中建筑时：左键按住超过阈值切换为旋转视角（不再视为单击）
 		if _mouse_left_down and _click_armed and not _rotating \
+				and preview_item.is_empty() \
 				and event.position.distance_to(_press_pos) > DRAG_THRESHOLD:
 			_rotating = true
 			_click_armed = false
+		# 选中建筑时：左键按住拖动 = 批量连续建造（划过可建格自动放置）
+		if _mouse_left_down and not preview_item.is_empty() and not _rotating:
+			var pc: Vector2i = _screen_to_cell(event.position)
+			if pc.x >= 0 and pc != _last_drag_cell:
+				_last_drag_cell = pc
+				_click_armed = false  # 拖动建造开始后，松开不再视为单击
+				drag_place_requested.emit(pc)
 		if _rotating:
 			var delta: Vector2 = event.position - _last_mouse_pos
 			_yaw -= delta.x * ROTATE_SPEED
-			_pitch = clampf(_pitch - delta.y * ROTATE_SPEED, CAM_PITCH_MIN, CAM_PITCH_MAX)
+			# 鼠标下拖 → 俯角增大（更俯视），修正：原方向相反
+			_pitch = clampf(_pitch + delta.y * ROTATE_SPEED, CAM_PITCH_MIN, CAM_PITCH_MAX)
 			_update_camera()
 		elif _panning_view:
 			var delta: Vector2 = event.position - _last_mouse_pos
@@ -663,7 +718,8 @@ func _pan_camera(delta: Vector2) -> void:
 	flat_forward = flat_forward.normalized()
 	var flat_right := Vector3(cam_right.x, 0.0, cam_right.z).normalized()
 	var speed: float = _cam_dist * 0.0012
-	_cam_target += (-flat_right * delta.x + flat_forward * delta.y) * speed
+	# 鼠标下拖 → 画面内容下移（与拖动方向一致），修正：原竖直方向相反
+	_cam_target += (-flat_right * delta.x - flat_forward * delta.y) * speed
 	_update_camera()
 
 
@@ -677,6 +733,26 @@ func _update_hover_highlight() -> void:
 		_highlight.scale = Vector3(r.size.x, 1.0, r.size.y)
 		_highlight.visible = true
 		(_highlight.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.4, 0.35, 0.3)
+		return
+	# 建造预选框：选中建筑时按建筑尺寸显示绿（可建）/红（不可建）/红闪（金币不足）
+	if not preview_item.is_empty() and hover_cell.x >= 0 and hover_cell.y >= 0:
+		var pw: int = int(preview_item.get("width", 1))
+		var ph: int = int(preview_item.get("height", 1))
+		var can: bool = can_build_at(hover_cell, pw, ph)
+		var afford: bool = GameState.gold >= float(preview_item.get("cost", 0))
+		var color: Color
+		if can and afford:
+			color = Color(0.3, 0.95, 0.5, 0.38)
+		elif not afford:
+			var blink: float = 0.55 + 0.35 * sin(_flash_t * 10.0)  # 金币不足红色闪烁
+			color = Color(0.95, 0.25, 0.25, blink)
+		else:
+			color = Color(0.95, 0.3, 0.3, 0.4)
+		_highlight.position = Vector3((hover_cell.x + pw * 0.5) * cellf, 0.05,
+				(hover_cell.y + ph * 0.5) * cellf)
+		_highlight.scale = Vector3(pw, 1.0, ph)
+		_highlight.visible = true
+		(_highlight.material_override as StandardMaterial3D).albedo_color = color
 		return
 	if hover_cell.x < 0 or hover_cell.y < 0:
 		_highlight.visible = false
@@ -706,6 +782,157 @@ func _make_flat_quad(size: float, color: Color) -> Mesh:
 	return st.commit()
 
 
+# ================= 粒子特效（建造/完工/升级/拆除） =================
+
+func _emit_particle(pos: Vector3, vel: Vector3, color: Color, size: float, life: float, kind: String = "spark") -> void:
+	var mi := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = size
+	sphere.height = size * 2.0
+	mi.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mi.material_override = mat
+	mi.position = pos
+	_object_root.add_child(mi)
+	_particles.append({"node": mi, "vel": vel, "life": life, "max_life": life, "kind": kind})
+
+
+func _tick_particles(delta: float) -> void:
+	var done: Array[int] = []
+	for i: int in range(_particles.size()):
+		var pt: Dictionary = _particles[i]
+		pt["life"] = float(pt["life"]) - delta
+		if pt.get("kind", "") == "debris":
+			pt["vel"] = Vector3(pt["vel"]) + Vector3(0, -30.0, 0) * delta  # 拆除碎片下落
+		var node: MeshInstance3D = pt["node"]
+		node.position = node.position + Vector3(pt["vel"]) * delta
+		var alpha: float = clampf(float(pt["life"]) / float(pt["max_life"]), 0.0, 1.0)
+		(node.material_override as StandardMaterial3D).albedo_color.a = alpha
+		if float(pt["life"]) <= 0.0:
+			done.append(i)
+	for i: int in range(done.size()):
+		var idx: int = int(done[done.size() - 1 - i])
+		(_particles[idx]["node"] as Node).queue_free()
+		_particles.remove_at(idx)
+
+
+func _spawn_effect_particles(cell: Vector2i, kind: String) -> void:
+	var cellf: float = _cell_size_3d()
+	var center: Vector3 = Vector3((cell.x + 0.5) * cellf, cellf * 0.4, (cell.y + 0.5) * cellf)
+	match kind:
+		"place":
+			# 放置：青色火花四溅 + 光柱
+			for i: int in range(12):
+				var ang: float = randf() * TAU
+				_emit_particle(center, Vector3(cos(ang), randf_range(0.6, 1.6), sin(ang)) * 45.0,
+						Color(0.5, 0.9, 1.0), cellf * 0.04, 0.6)
+			_emit_particle(center + Vector3(0, cellf * 0.3, 0), Vector3(0, 120, 0),
+					Color(0.7, 0.95, 1.0), cellf * 0.35, 0.45, "beam")
+		"complete":
+			# 完工：金色爆发
+			for i: int in range(18):
+				var ang: float = randf() * TAU
+				var phi: float = randf() * TAU
+				_emit_particle(center + Vector3(0, cellf * 0.4, 0),
+						Vector3(cos(ang) * cos(phi), sin(phi), sin(ang) * cos(phi)) * 70.0,
+						Color(1.0, 0.85, 0.35), cellf * 0.05, 0.9)
+		"upgrade":
+			# 升级：蓝色上升光点
+			for i: int in range(10):
+				_emit_particle(center + Vector3(randf_range(-cellf * 0.3, cellf * 0.3), 0.2,
+						randf_range(-cellf * 0.3, cellf * 0.3)),
+						Vector3(0, randf_range(45, 100), 0), Color(0.6, 0.9, 1.0), cellf * 0.04, 0.8)
+		"demolish":
+			# 拆除：棕色碎片下落
+			for i: int in range(14):
+				_emit_particle(center + Vector3(0, cellf * 0.5, 0),
+						Vector3(randf_range(-70, 70), randf_range(20, 70), randf_range(-70, 70)),
+						Color(0.7, 0.55, 0.4), cellf * 0.06, 1.0, "debris")
+
+
+# ================= 人流粒子（完工建筑间游走） =================
+
+func _tick_people(delta: float) -> void:
+	_people_targets.clear()
+	for key: String in BuildingSystem.placed:
+		var p: Dictionary = BuildingSystem.placed[key]
+		if not p.get("completed", false):
+			continue
+		var anchor: Vector2i = BuildingSystem.BuildingGrid.key_to_cell(key)
+		_people_targets.append(Vector3((anchor.x + 0.5) * _cell_size_3d(), 0.3,
+				(anchor.y + 0.5) * _cell_size_3d()))
+	if _people_targets.is_empty():
+		if not _people.is_empty():
+			for pp: Dictionary in _people:
+				(pp["node"] as Node).queue_free()
+			_people.clear()
+		return
+	var target_count: int = mini(PEOPLE_MAX, _people_targets.size() * 2)
+	if _people.size() < target_count:
+		for i: int in range(target_count - _people.size()):
+			_people.append(_spawn_person())
+	elif _people.size() > target_count:
+		for i: int in range(_people.size() - target_count):
+			var pp: Dictionary = _people.pop_back()
+			(pp["node"] as Node).queue_free()
+	for pp: Dictionary in _people:
+		var node: Node3D = pp["node"]
+		var target: Vector3 = pp["target"]
+		var dir: Vector3 = target - node.position
+		if dir.length() < 3.0:
+			pp["target"] = _people_targets[randi() % _people_targets.size()]
+		else:
+			node.position = node.position + dir.normalized() * float(pp["speed"]) * delta
+
+
+func _spawn_person() -> Dictionary:
+	var node := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 1.6
+	sphere.height = 3.2
+	node.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.92, 0.8)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	node.material_override = mat
+	node.position = _people_targets[randi() % _people_targets.size()]
+	_object_root.add_child(node)
+	return {"node": node, "target": _people_targets[randi() % _people_targets.size()],
+			"speed": randf_range(14.0, 26.0)}
+
+
+# ================= 施工进度条 =================
+
+func _update_construction_bars() -> void:
+	var cellf: float = _cell_size_3d()
+	for key: String in BuildingSystem.placed:
+		var p: Dictionary = BuildingSystem.placed[key]
+		if p.get("op", "") == "":
+			continue
+		var cellk: Vector2i = BuildingSystem.BuildingGrid.key_to_cell(key)
+		var bar: MeshInstance3D = _object_root.get_node_or_null("Bar_" + key) as MeshInstance3D
+		if bar == null:
+			var box := BoxMesh.new()
+			box.size = Vector3(float(p.get("width", 1)) * cellf * 0.8, cellf * 0.06, cellf * 0.08)
+			bar = MeshInstance3D.new()
+			bar.name = "Bar_" + key
+			bar.mesh = box
+			var mat := StandardMaterial3D.new()
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			bar.material_override = mat
+			bar.position = Vector3((cellk.x + float(p.get("width", 1)) * 0.5) * cellf,
+					cellf * 1.25, (cellk.y + float(p.get("height", 1)) * 0.5) * cellf)
+			_object_root.add_child(bar)
+		# 进度 = 已施工比例；颜色：建造绿/升级黄/拆除红
+		var progress: float = 1.0 - float(p.get("remaining", 0.0)) / maxf(float(p.get("total", 1.0)), 0.001)
+		bar.scale = Vector3(maxf(progress, 0.01), 1.0, 1.0)
+		var c: Color = {"build": Color(0.3, 0.9, 0.55), "upgrade": Color(0.95, 0.8, 0.3),
+				"demolish": Color(0.95, 0.35, 0.3)}.get(p.get("op", ""), Color.WHITE)
+		(bar.material_override as StandardMaterial3D).albedo_color = c
+
+
 # === 工具（explore_map 兼容接口） ===
 
 func set_demolish_mode(on: bool) -> void:
@@ -726,7 +953,5 @@ func can_build_at(cell: Vector2i, w: int, h: int) -> bool:
 	return true
 
 
-func _notification(what: int) -> void:
-	# 窗口/控件尺寸变化：同步子视口分辨率
-	if what == NOTIFICATION_RESIZED and _viewport != null:
-		_viewport.size = Vector2i(maxi(64, int(size.x)), maxi(64, int(size.y)))
+# 注：SubViewportContainer 开启 stretch 时由容器自动拉伸管理，不可手动修改 SubViewport.size
+# （手动设置会报错并导致视口渲染异常，故不再处理 NOTIFICATION_RESIZED）
