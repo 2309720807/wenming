@@ -271,7 +271,7 @@ func _build_ground() -> void:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var cw: int = BuildingSystem.GRID_W
 	var ch: int = BuildingSystem.GRID_H
-	var vc: int = 0  # 顶点索引计数器（SurfaceTool 无 get_vertex_count）
+	var vc: int = 0  # 顶点索引计数器
 	for x: int in range(cw):
 		for y: int in range(ch):
 			var mark: String = str(BuildingSystem.grid[x][y])
@@ -282,14 +282,12 @@ func _build_ground() -> void:
 				color = _terrain_color(x, y).darkened(0.3)   # 占用：地形色更深（建筑下）
 			else:
 				color = _terrain_color(x, y)  # 空地/草坪：草质或岩质随机
-			# 瓦片在 Y=0.02 微抬，避免 z-fighting
-			var base: Vector3 = Vector3(x * cell, 0.02, y * cell)
-			var s: Vector3 = Vector3(cell, 0.0, cell)
+			# 每格独立 4 顶点，但高度取自相邻角共享的高度场（相邻格边界高度一致 → 视觉无缝）
 			st.set_color(color)
-			st.add_vertex(base)
-			st.add_vertex(base + Vector3(s.x, 0, 0))
-			st.add_vertex(base + Vector3(s.x, 0, s.z))
-			st.add_vertex(base + Vector3(0, 0, s.z))
+			st.add_vertex(Vector3(x * cell, _ground_height(x, y) + 0.02, y * cell))
+			st.add_vertex(Vector3((x + 1) * cell, _ground_height(x + 1, y) + 0.02, y * cell))
+			st.add_vertex(Vector3((x + 1) * cell, _ground_height(x + 1, y + 1) + 0.02, (y + 1) * cell))
+			st.add_vertex(Vector3(x * cell, _ground_height(x, y + 1) + 0.02, (y + 1) * cell))
 			st.add_index(vc)
 			st.add_index(vc + 1)
 			st.add_index(vc + 2)
@@ -307,20 +305,20 @@ func _build_ground() -> void:
 	mat.shadow_offset = 0.01
 	ground.material_override = mat
 	_ground_root.add_child(ground)
-	# 格子线（ImmediateMesh 画网格边框）
+	# 格子线（逐段贴合地形：每条竖线/横线沿高度分段折线）
 	var lines := ImmediateMesh.new()
 	var line_color := Color(0.35, 0.55, 0.85, 0.4)
 	lines.surface_begin(Mesh.PRIMITIVE_LINES)
 	for x: int in range(cw + 1):
-		var px: float = x * cell
-		lines.surface_set_color(line_color)
-		lines.surface_add_vertex(Vector3(px, 0.03, 0.0))
-		lines.surface_add_vertex(Vector3(px, 0.03, ch * cell))
+		for zseg: int in range(ch):
+			lines.surface_set_color(line_color)
+			lines.surface_add_vertex(Vector3(x * cell, _ground_height(x, zseg) + 0.035, zseg * cell))
+			lines.surface_add_vertex(Vector3(x * cell, _ground_height(x, zseg + 1) + 0.035, (zseg + 1) * cell))
 	for y: int in range(ch + 1):
-		var pz: float = y * cell
-		lines.surface_set_color(line_color)
-		lines.surface_add_vertex(Vector3(0.0, 0.03, pz))
-		lines.surface_add_vertex(Vector3(cw * cell, 0.03, pz))
+		for xseg: int in range(cw):
+			lines.surface_set_color(line_color)
+			lines.surface_add_vertex(Vector3(xseg * cell, _ground_height(xseg, y) + 0.035, y * cell))
+			lines.surface_add_vertex(Vector3((xseg + 1) * cell, _ground_height(xseg + 1, y) + 0.035, y * cell))
 	lines.surface_end()
 	var line_mesh := MeshInstance3D.new()
 	line_mesh.name = "GridLines"
@@ -352,6 +350,36 @@ func _rebuild_all() -> void:
 		_spawn_building(BuildingSystem.BuildingGrid.key_to_cell(key), p.get("item_id", ""))
 
 
+# ================= 地形高度场（平滑随机起伏） =================
+
+const HEIGHT_CTRL: int = 6         # 控制点间距（格数）：6 格一控制点，丘陵宽约 240 单位
+const HEIGHT_AMP: float = 0.38     # 控制点高度幅度（格单位）：略微起伏（±0.38 格 ≈ ±15 单位）
+
+
+## 控制点高度：确定性（固定种子 + 坐标 hash），重建不变
+func _ctrl_height(cx: int, cy: int) -> float:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = TERRAIN_SEED + cx * 7919 + cy * 104729
+	return (rng.randf() * 2.0 - 1.0) * HEIGHT_AMP
+
+
+## 地面高度（格中心/角点通用）：控制点双线性平滑插值 → 连续丘陵，无裂缝
+func _ground_height(gx: float, gy: float) -> float:
+	var cx: int = int(floor(gx / HEIGHT_CTRL))
+	var cy: int = int(floor(gy / HEIGHT_CTRL))
+	var fx: float = gx / HEIGHT_CTRL - cx
+	var fy: float = gy / HEIGHT_CTRL - cy
+	var h00: float = _ctrl_height(cx, cy)
+	var h10: float = _ctrl_height(cx + 1, cy)
+	var h01: float = _ctrl_height(cx, cy + 1)
+	var h11: float = _ctrl_height(cx + 1, cy + 1)
+	# smoothstep（三次缓动）插值：地形平滑，无折角
+	var sx: float = fx * fx * (3.0 - 2.0 * fx)
+	var sy: float = fy * fy * (3.0 - 2.0 * fy)
+	var hz: float = lerpf(lerpf(h00, h10, sx), lerpf(h01, h11, sx), sy)
+	return hz * _cell_size_3d()
+
+
 # ================= 障碍物 3D =================
 
 func _build_obstacles() -> void:
@@ -370,7 +398,9 @@ func _build_obstacles() -> void:
 			if obs_id == "lake" and anchors.has(anchor):
 				continue
 			anchors.append(anchor)
-			var center: Vector3 = Vector3((x + 0.5) * cell, 0.0, (y + 0.5) * cell)
+			# 障碍物贴地：y = 该格中心高度（树/岩石坐在地面上）
+			var gh: float = _ground_height(x + 0.5, y + 0.5)
+			var center: Vector3 = Vector3((x + 0.5) * cell, gh, (y + 0.5) * cell)
 			match obs_id:
 				"tree": _spawn_tree(center, cell)
 				"rock": _spawn_rock(center, cell)
@@ -436,8 +466,13 @@ func _spawn_building(cell: Vector2i, item_id: String) -> void:
 	var p: Dictionary = BuildingSystem.placed.get(key, {})
 	var node: Node3D = BuildingMeshes.build(item, int(p.get("level", 1)), _cell_size_3d())
 	node.name = "B_" + key
-	node.position = Vector3((cell.x + float(item.get("width", 1)) * 0.5) * _cell_size_3d(),
-			0.0, (cell.y + float(item.get("height", 1)) * 0.5) * _cell_size_3d())
+	var bw: int = int(item.get("width", 1))
+	var bh: int = int(item.get("height", 1))
+	# 建筑贴地：取覆盖区域四角平均高度（基座下沉掩住微起伏）
+	var bg_h: float = (_ground_height(cell.x, cell.y) + _ground_height(cell.x + bw, cell.y)
+			+ _ground_height(cell.x, cell.y + bh) + _ground_height(cell.x + bw, cell.y + bh)) * 0.25
+	node.position = Vector3((cell.x + bw * 0.5) * _cell_size_3d(),
+			bg_h - _cell_size_3d() * 0.02, (cell.y + bh * 0.5) * _cell_size_3d())
 	_object_root.add_child(node)
 	# 等级徽章（Label3D 广告牌，悬浮建筑上方，随缩放自适应字号）
 	var badge := Label3D.new()
@@ -808,7 +843,8 @@ func _update_hover_highlight() -> void:
 	var cellf: float = _cell_size_3d()
 	if demolish_mode and _select_start.x >= 0 and _select_end.x >= 0:
 		var r: Rect2i = _selection_rect()
-		_highlight.position = Vector3((r.position.x + r.size.x * 0.5) * cellf, 0.05,
+		_highlight.position = Vector3((r.position.x + r.size.x * 0.5) * cellf,
+				_ground_height(r.position.x + r.size.x * 0.5, r.position.y + r.size.y * 0.5) + 0.05,
 				(r.position.y + r.size.y * 0.5) * cellf)
 		# 缩放 × 格子尺寸：框选矩形按真实格数占地显示
 		_highlight.scale = Vector3(r.size.x * cellf, 1.0, r.size.y * cellf)
@@ -829,7 +865,8 @@ func _update_hover_highlight() -> void:
 			color = Color(0.95, 0.25, 0.25, blink)
 		else:
 			color = Color(0.95, 0.3, 0.3, 0.4)
-		_highlight.position = Vector3((hover_cell.x + pw * 0.5) * cellf, 0.05,
+		_highlight.position = Vector3((hover_cell.x + pw * 0.5) * cellf,
+				_ground_height(hover_cell.x + pw * 0.5, hover_cell.y + ph * 0.5) + 0.05,
 				(hover_cell.y + ph * 0.5) * cellf)
 		# 缩放 × 格子尺寸：预选框 = 建筑真实占用大小（w×h 格）
 		_highlight.scale = Vector3(pw * cellf, 1.0, ph * cellf)
@@ -839,7 +876,8 @@ func _update_hover_highlight() -> void:
 	if hover_cell.x < 0 or hover_cell.y < 0:
 		_highlight.visible = false
 		return
-	_highlight.position = Vector3((hover_cell.x + 0.5) * cellf, 0.05, (hover_cell.y + 0.5) * cellf)
+	_highlight.position = Vector3((hover_cell.x + 0.5) * cellf,
+			_ground_height(hover_cell.x + 0.5, hover_cell.y + 0.5) + 0.05, (hover_cell.y + 0.5) * cellf)
 	_highlight.scale = Vector3(cellf, 1.0, cellf)
 	_highlight.visible = true
 	(_highlight.material_override as StandardMaterial3D).albedo_color = Color(0.5, 0.95, 0.6, 0.32)
