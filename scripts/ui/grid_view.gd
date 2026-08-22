@@ -843,11 +843,10 @@ func _update_hover_highlight() -> void:
 	var cellf: float = _cell_size_3d()
 	if demolish_mode and _select_start.x >= 0 and _select_end.x >= 0:
 		var r: Rect2i = _selection_rect()
-		_highlight.position = Vector3((r.position.x + r.size.x * 0.5) * cellf,
-				_ground_height(r.position.x + r.size.x * 0.5, r.position.y + r.size.y * 0.5) + 0.05,
-				(r.position.y + r.size.y * 0.5) * cellf)
-		# 缩放 × 格子尺寸：框选矩形按真实格数占地显示
-		_highlight.scale = Vector3(r.size.x * cellf, 1.0, r.size.y * cellf)
+		# 贴合地形网格：按框选格数细分，顶点取地形高度（完整覆盖起伏地面）
+		_highlight.mesh = _make_terrain_fit_quad(r.size.x, r.size.y, cellf)
+		_highlight.position = Vector3(r.position.x * cellf, 0.0, r.position.y * cellf)
+		_highlight.scale = Vector3.ONE  # 网格已含真实尺寸与地形高度
 		_highlight.visible = true
 		(_highlight.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.4, 0.35, 0.3)
 		return
@@ -865,20 +864,20 @@ func _update_hover_highlight() -> void:
 			color = Color(0.95, 0.25, 0.25, blink)
 		else:
 			color = Color(0.95, 0.3, 0.3, 0.4)
-		_highlight.position = Vector3((hover_cell.x + pw * 0.5) * cellf,
-				_ground_height(hover_cell.x + pw * 0.5, hover_cell.y + ph * 0.5) + 0.05,
-				(hover_cell.y + ph * 0.5) * cellf)
-		# 缩放 × 格子尺寸：预选框 = 建筑真实占用大小（w×h 格）
-		_highlight.scale = Vector3(pw * cellf, 1.0, ph * cellf)
+		# 贴合地形网格：预选框按 w×h 格细分完整覆盖（不受地形起伏遮挡）
+		_highlight.mesh = _make_terrain_fit_quad(pw, ph, cellf)
+		_highlight.position = Vector3(hover_cell.x * cellf, 0.0, hover_cell.y * cellf)
+		_highlight.scale = Vector3.ONE
 		_highlight.visible = true
 		(_highlight.material_override as StandardMaterial3D).albedo_color = color
 		return
 	if hover_cell.x < 0 or hover_cell.y < 0:
 		_highlight.visible = false
 		return
-	_highlight.position = Vector3((hover_cell.x + 0.5) * cellf,
-			_ground_height(hover_cell.x + 0.5, hover_cell.y + 0.5) + 0.05, (hover_cell.y + 0.5) * cellf)
-	_highlight.scale = Vector3(cellf, 1.0, cellf)
+	# 单格悬停：也换成贴合地形网格（1×1 细分）
+	_highlight.mesh = _make_terrain_fit_quad(1, 1, cellf)
+	_highlight.position = Vector3(hover_cell.x * cellf, 0.0, hover_cell.y * cellf)
+	_highlight.scale = Vector3.ONE
 	_highlight.visible = true
 	(_highlight.material_override as StandardMaterial3D).albedo_color = Color(0.5, 0.95, 0.6, 0.32)
 
@@ -886,6 +885,32 @@ func _update_hover_highlight() -> void:
 func _selection_rect() -> Rect2i:
 	return Rect2i(mini(_select_start.x, _select_end.x), mini(_select_start.y, _select_end.y),
 			abs(_select_end.x - _select_start.x) + 1, abs(_select_end.y - _select_start.y) + 1)
+
+
+## 生成贴合地形的高亮网格：按 w×h 格细分，每个格角取 _ground_height（完整覆盖起伏地面）
+## 渲染时仅缩放为 1、位置取格起点——预选框/框选/悬停完整显示在网格上不受地形起伏影响
+func _make_terrain_fit_quad(w: int, h: int, cell: float) -> Mesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var vc: int = 0
+	for gx: int in range(w):
+		for gy: int in range(h):
+			var h00: float = _ground_height(gx, gy) + 0.08
+			var h10: float = _ground_height(gx + 1, gy) + 0.08
+			var h11: float = _ground_height(gx + 1, gy + 1) + 0.08
+			var h01: float = _ground_height(gx, gy + 1) + 0.08
+			st.add_vertex(Vector3(gx * cell, h00, gy * cell))
+			st.add_vertex(Vector3((gx + 1) * cell, h10, gy * cell))
+			st.add_vertex(Vector3((gx + 1) * cell, h11, (gy + 1) * cell))
+			st.add_vertex(Vector3(gx * cell, h01, (gy + 1) * cell))
+			st.add_index(vc)
+			st.add_index(vc + 1)
+			st.add_index(vc + 2)
+			st.add_index(vc)
+			st.add_index(vc + 2)
+			st.add_index(vc + 3)
+			vc += 4
+	return st.commit()
 
 
 func _make_flat_quad(size: float, color: Color) -> Mesh:
