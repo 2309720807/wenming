@@ -51,6 +51,21 @@ var _sky: WorldEnvironment      # 天空环境（昼夜色渐变）
 var _sun_disc: MeshInstance3D   # 太阳圆盘（可见光球，跟随日光方向）
 var _moon_disc: MeshInstance3D  # 月亮圆盘（冷色光球，跟随月光方向）
 
+# === 地形随机分布（草质/岩质） ===
+const TERRAIN_BLOCK: int = 4            # 地形块尺寸（4×4 格随机成块，避免单格噪点）
+const TERRAIN_SEED: int = 20260815      # 固定种子：随机分布但每次重建一致（不闪烁）
+const GRASS_SHADES: Array[Color] = [    # 草地色阶（随机微调）
+	Color(0.14, 0.32, 0.16, 1.0),
+	Color(0.18, 0.4, 0.2, 1.0),
+	Color(0.11, 0.28, 0.14, 1.0),
+]
+const ROCK_SHADES: Array[Color] = [     # 岩地色阶（随机微调）
+	Color(0.2, 0.22, 0.26, 1.0),
+	Color(0.26, 0.28, 0.32, 1.0),
+	Color(0.17, 0.19, 0.23, 1.0),
+]
+const ROCK_RATIO: float = 0.4           # 岩质地块占比（其余为草地）
+
 # === 昼夜系统 ===
 const DAY_LENGTH: float = 90.0          # 现实 90 秒 = 游戏一昼夜（随 GameState 游戏时间流逝）
 # 天体轨道采用竖直圆模型：θ 从东地平(0)→头顶(π/2)→西地平(π)→地下(2π)
@@ -226,6 +241,26 @@ func _cell_size_3d() -> float:
 
 
 ## 地面：SurfaceTool 合并所有格子瓦片为单个 Mesh（顶点色区分空地/占用/障碍）+ 格子线
+## 地形颜色：按 4×4 块随机草质/岩质，块内色阶微调（确定性种子，重建不变）
+func _terrain_color(gx: int, gy: int) -> Color:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = TERRAIN_SEED
+	# 块坐标 + 3D 扰动（避免网格感：块边界轻微偏移）
+	var bx: int = gx / TERRAIN_BLOCK
+	var by: int = gy / TERRAIN_BLOCK
+	var rock: bool = _block_is_rock(bx, by, rng)
+	var shades: Array[Color] = ROCK_SHADES if rock else GRASS_SHADES
+	# 格内随机选色阶（同一块内不同格颜色略有差异，呈现自然噪感）
+	rng.seed = TERRAIN_SEED + gx * 73856093 + gy * 19349663
+	return shades[rng.randi_range(0, shades.size() - 1)]
+
+
+## 确定性块判定：草/岩（重复可复现：仅用块坐标决定）
+func _block_is_rock(bx: int, by: int, rng: RandomNumberGenerator) -> bool:
+	rng.seed = TERRAIN_SEED + bx * 131071 + by * 524287
+	return rng.randf() < ROCK_RATIO
+
+
 func _build_ground() -> void:
 	for child: Node in _ground_root.get_children():
 		child.queue_free()
@@ -240,11 +275,11 @@ func _build_ground() -> void:
 			var mark: String = str(BuildingSystem.grid[x][y])
 			var color: Color
 			if mark.begins_with("obs:"):
-				color = Color(0.22, 0.3, 0.2, 1.0)  # 障碍格（草绿暗底）
+				color = _terrain_color(x, y).darkened(0.15)  # 障碍格：地形色略暗
 			elif mark == "occ":
-				color = Color(0.16, 0.22, 0.34, 1.0)  # 占用
+				color = _terrain_color(x, y).darkened(0.3)   # 占用：地形色更深（建筑下）
 			else:
-				color = Color(0.1, 0.16, 0.28, 1.0)  # 空地
+				color = _terrain_color(x, y)  # 空地/草坪：草质或岩质随机
 			# 瓦片在 Y=0.02 微抬，避免 z-fighting
 			var base: Vector3 = Vector3(x * cell, 0.02, y * cell)
 			var s: Vector3 = Vector3(cell, 0.0, cell)
