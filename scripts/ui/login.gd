@@ -93,6 +93,7 @@ func _start_new_game(name_value: String) -> void:
 	# 新建游戏 = 全新开局：重置数据/建造/时间状态，避免继承自动存档（修复：不同存档进入后内容相同）
 	GameState.reset_state()
 	BuildingSystem.reset_state()
+	MilitarySystem.reset_state()  # 军事基地/库存独立（修复：各角色串号）
 	TimeManager.reset_time()
 	GameState.player_name = player_name  # 存入数据层，供主界面等模块使用
 	error_label.visible = false

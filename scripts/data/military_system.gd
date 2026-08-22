@@ -240,6 +240,16 @@ func _key_to_cell(key: String) -> Vector2i:
 
 # === 存档 ===
 
+## 新游戏开局重置军事状态（登录新建角色时调用）：
+## Autoload 单例跨角色存活，不重置会继承上一角色的基地/库存（修复：各角色军事数据串号）
+func reset_state() -> void:
+	inventory = {}
+	expansions = 0
+	_siege_cooldown = 0.0
+	_reset_base()
+	base_changed.emit(Vector2i.ZERO)
+
+
 func collect_state() -> Dictionary:
 	return {
 		"inventory": inventory,
