@@ -98,6 +98,12 @@ static func build(item: Dictionary, level: int, cellf: float) -> Node3D:
 			_build_hospital(root, total_w, total_d, cellf, base, level)
 		"finance":
 			_build_finance(root, total_w, total_d, cellf, base, level)
+		"garden":
+			_build_garden(root, total_w, total_d, cellf, base, level)
+		"fountain":
+			_build_fountain(root, total_w, total_d, cellf, base, level)
+		"statue":
+			_build_statue(root, total_w, total_d, cellf, base, level)
 		_:
 			_build_generic(root, total_w, total_d, cellf, base, level)
 	return root
@@ -340,6 +346,135 @@ static func _build_finance(root: Node3D, tw: float, td: float, cellf: float, bas
 	var orb := _sphere(cellf * 0.1, gold_c.lightened(0.55))
 	orb.position = Vector3(0, y_pos + cellf * 0.55, 0)
 	root.add_child(orb)
+
+
+# ========== 花园：真花园造型（花坛+灌木球+小径+栅栏） ==========
+
+static func _build_garden(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
+	# 多色调色板：草绿底/深绿灌木/多彩花丛/土黄小径/矮白栅栏
+	var grass_c := Color(0.35, 0.52, 0.28)     # 草坪底
+	var bush_c := Color(0.22, 0.48, 0.26)      # 灌木深绿
+	var bush2_c := Color(0.3, 0.6, 0.32)       # 灌木亮绿
+	var path_c := Color(0.78, 0.7, 0.52)       # 土黄小径
+	var fence_c := Color(0.88, 0.88, 0.86)     # 白栅栏
+	var flower_colors: Array[Color] = [Color(0.95, 0.35, 0.4), Color(0.98, 0.8, 0.3), Color(0.8, 0.45, 0.95)]
+	# 草坪基底（微抬）
+	_add_box_tex(root, tw, cellf * 0.08, td, grass_c,
+			_brick_texture(grass_c.lightened(0.08), grass_c.darkened(0.2)), Vector3(0, cellf * 0.04, 0))
+	# 十字小径（土黄色，两条垂直带）
+	_add_box(root, tw * 0.22, cellf * 0.09, td * 0.98, path_c, Vector3(0, cellf * 0.045, 0))
+	_add_box(root, tw * 0.98, cellf * 0.09, td * 0.22, path_c, Vector3(0, cellf * 0.045, 0))
+	# 四角灌木丛（高低错落的球体）
+	var bush_pos: Array[Vector3] = [
+		Vector3(-tw * 0.36, cellf * 0.12, -td * 0.36), Vector3(tw * 0.36, cellf * 0.1, -td * 0.36),
+		Vector3(-tw * 0.36, cellf * 0.1, td * 0.36), Vector3(tw * 0.36, cellf * 0.12, td * 0.36)]
+	for i: int in range(4):
+		var bush := _sphere(cellf * (0.1 + 0.02 * (i % 2)), bush_c if i % 2 == 0 else bush2_c)
+		bush.position = bush_pos[i]
+		root.add_child(bush)
+	# 花丛（多彩小球沿小径）
+	var flower_pos: Array[Vector3] = [
+		Vector3(-tw * 0.18, cellf * 0.1, -td * 0.18), Vector3(tw * 0.18, cellf * 0.1, -td * 0.18),
+		Vector3(-tw * 0.18, cellf * 0.1, td * 0.18), Vector3(tw * 0.18, cellf * 0.1, td * 0.18)]
+	for i: int in range(4):
+		var fl := _sphere(cellf * 0.06, flower_colors[i % flower_colors.size()])
+		fl.position = flower_pos[i]
+		root.add_child(fl)
+	# 矮白栅栏（四边细条）
+	for s: int in range(4):
+		var fx: float = tw * 0.48 if s < 2 else 0.0
+		var fz: float = td * 0.48 if s >= 2 else 0.0
+		var horiz: bool = s >= 2
+		_add_box(root, tw * 0.95 if horiz else cellf * 0.05, cellf * 0.1,
+				cellf * 0.05 if horiz else td * 0.95, fence_c,
+				Vector3(0 if not horiz else 0.0, cellf * 0.12, 0 if horiz else 0.0))
+	# 栅栏四条边（简化：四根角柱 + 边条）
+	for corner: Vector3 in [Vector3(-tw * 0.47, 0, -td * 0.47), Vector3(tw * 0.47, 0, -td * 0.47),
+			Vector3(-tw * 0.47, 0, td * 0.47), Vector3(tw * 0.47, 0, td * 0.47)]:
+		_add_box(root, cellf * 0.04, cellf * 0.14, cellf * 0.04, fence_c,
+				Vector3(corner.x, cellf * 0.11, corner.z))
+	for x_edge in [Vector3(0, 0, -td * 0.47), Vector3(0, 0, td * 0.47)]:
+		_add_box(root, tw * 0.92, cellf * 0.05, cellf * 0.04, fence_c,
+				Vector3(x_edge.x, cellf * 0.1, x_edge.z))
+	for z_edge in [Vector3(-tw * 0.47, 0, 0), Vector3(tw * 0.47, 0, 0)]:
+		_add_box(root, cellf * 0.04, cellf * 0.05, td * 0.92, fence_c,
+				Vector3(z_edge.x, cellf * 0.1, z_edge.z))
+
+
+# ========== 喷泉：真喷泉造型（圆形水池+中央水柱+环形喷嘴+外围地台） ==========
+
+static func _build_fountain(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
+	# 多色调色板：石质灰地台/浅蓝池水/白石池沿/水柱淡蓝
+	var stone_c := Color(0.62, 0.65, 0.7)      # 石质地台
+	var water_c := Color(0.35, 0.7, 0.9, 0.85) # 池水蓝
+	var rim_c := Color(0.78, 0.8, 0.84)        # 池沿白石
+	var jet_c := Color(0.6, 0.85, 1.0, 0.9)    # 水柱
+	var basin_c := Color(0.4, 0.42, 0.48)      # 中央盆
+	# 石质地台（圆形：圆柱扁平）
+	var plinth := _cyl(cellf * 0.46, cellf * 0.46, cellf * 0.1, stone_c)
+	plinth.position = Vector3(0, cellf * 0.05, 0)
+	root.add_child(plinth)
+	# 水池（外沿圈：大圆环用"双圆柱差"近似——外柱白沿 + 内水面）
+	var outer := _cyl(cellf * 0.44, cellf * 0.44, cellf * 0.16, rim_c)
+	outer.position = Vector3(0, cellf * 0.08, 0)
+	root.add_child(outer)
+	var water := _cyl(cellf * 0.38, cellf * 0.38, cellf * 0.12, water_c)
+	water.position = Vector3(0, cellf * 0.1, 0)
+	root.add_child(water)
+	# 中央喷座（石柱）
+	var pedestal := _cyl(cellf * 0.14, cellf * 0.18, cellf * 0.26, stone_c.darkened(0.08))
+	pedestal.position = Vector3(0, cellf * 0.22, 0)
+	root.add_child(pedestal)
+	var basin := _cyl(cellf * 0.28, cellf * 0.32, cellf * 0.08, rim_c)
+	basin.position = Vector3(0, cellf * 0.36, 0)
+	root.add_child(basin)
+	# 中央水柱（高细圆柱，顶端渐细）
+	var jet := _cyl(cellf * 0.06, cellf * 0.1, cellf * 0.5, jet_c)
+	jet.position = Vector3(0, cellf * 0.64, 0)
+	root.add_child(jet)
+	var jet_top := _sphere(cellf * 0.07, jet_c)
+	jet_top.position = Vector3(0, cellf * 0.9, 0)
+	root.add_child(jet_top)
+	# 环形喷嘴水流（四向小水柱）
+	for i: int in range(4):
+		var ang: float = i * PI / 2.0
+		var dirx: float = cos(ang)
+		var dirz: float = sin(ang)
+		var nozzle := _cyl(cellf * 0.035, cellf * 0.035, cellf * 0.2, jet_c)
+		nozzle.position = Vector3(dirx * cellf * 0.22, cellf * 0.32, dirz * cellf * 0.22)
+		nozzle.rotation_degrees = Vector3(0, 0, -ang * 180.0 / PI)
+		root.add_child(nozzle)
+
+
+# ========== 雕像：真雕像造型（多层基座+人形柱+铭牌） ==========
+
+static func _build_statue(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
+	# 多色调色板：深灰基座/金褐雕像体/暗金铭牌
+	var base1_c := Color(0.42, 0.44, 0.5)   # 底层基座
+	var base2_c := Color(0.52, 0.54, 0.6)   # 二层基座
+	var body_c := base                     # 雕像主体（数据色金褐）
+	var plaque_c := Color(0.85, 0.75, 0.4) # 铭牌金
+	# 双层方形基座（下大上小）
+	_add_box(root, tw * 0.72, cellf * 0.14, td * 0.72, base1_c, Vector3(0, cellf * 0.07, 0))
+	_add_box(root, tw * 0.5, cellf * 0.14, td * 0.5, base2_c, Vector3(0, cellf * 0.21, 0))
+	# 铭牌（正面金板）
+	_add_box(root, tw * 0.28, cellf * 0.12, cellf * 0.03, plaque_c, Vector3(0, cellf * 0.1, td * 0.37))
+	# 雕像人形（躯干+头+双臂）——简化人像：柱状躯干+球头+展开臂
+	var torso := _cyl(cellf * 0.09, cellf * 0.13, cellf * 0.5, body_c)
+	torso.position = Vector3(0, cellf * 0.55, 0)
+	root.add_child(torso)
+	var head := _sphere(cellf * 0.09, body_c.lightened(0.08))
+	head.position = Vector3(0, cellf * 0.9, 0)
+	root.add_child(head)
+	# 双臂（斜伸，仿"振臂"造型：左臂扬起/右臂平伸）
+	var arm_l := _cyl(cellf * 0.04, cellf * 0.04, cellf * 0.3, body_c)
+	arm_l.position = Vector3(-cellf * 0.16, cellf * 0.7, 0)
+	arm_l.rotation_degrees = Vector3(0, 0, 140)
+	root.add_child(arm_l)
+	var arm_r := _cyl(cellf * 0.04, cellf * 0.04, cellf * 0.28, body_c)
+	arm_r.position = Vector3(cellf * 0.15, cellf * 0.62, 0)
+	arm_r.rotation_degrees = Vector3(0, 0, -120)
+	root.add_child(arm_r)
 
 
 # ========== 通用（备用类型） ==========
