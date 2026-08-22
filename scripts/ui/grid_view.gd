@@ -45,6 +45,8 @@ var _camera: Camera3D
 var _ground_root: Node3D
 var _object_root: Node3D
 var _highlight: MeshInstance3D  # 悬停高亮格
+var _grid_visible: bool = true             # 地图网格显示状态（右上角按钮切换）
+var _line_mesh: MeshInstance3D             # 网格线（可见性由 set_grid_visible 控制）
 var _sun: DirectionalLight3D    # 日光（东升西落）
 var _moon: DirectionalLight3D   # 月光（夜晚补光）
 var _sky: WorldEnvironment      # 天空环境（昼夜色渐变）
@@ -321,11 +323,14 @@ func _build_ground() -> void:
 		lines.surface_add_vertex(Vector3(cw * cell, 0.03, pz))
 	lines.surface_end()
 	var line_mesh := MeshInstance3D.new()
+	line_mesh.name = "GridLines"
 	line_mesh.mesh = lines
 	var line_mat := StandardMaterial3D.new()
 	line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	line_mat.vertex_color_use_as_albedo = true
 	line_mesh.material_override = line_mat
+	line_mesh.visible = _grid_visible
+	_line_mesh = line_mesh
 	_ground_root.add_child(line_mesh)
 
 
@@ -1019,6 +1024,13 @@ func set_demolish_mode(on: bool) -> void:
 	_select_end = Vector2i(-1, -1)
 	demolish_mode_changed.emit(on)
 	_update_hover_highlight()
+
+
+## 显示/隐藏地图网格线（右上角网格按钮调用；重建地面后状态保持）
+func set_grid_visible(on: bool) -> void:
+	_grid_visible = on
+	if _line_mesh != null:
+		_line_mesh.visible = on
 
 
 func can_build_at(cell: Vector2i, w: int, h: int) -> bool:

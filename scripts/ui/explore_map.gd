@@ -28,6 +28,7 @@ var _action_ctrl: BuildingActionPanel
 var _feedback: BuildingFeedback
 var _expand_panel: MapExpandPanel  # 扩大地图购买面板（点"地图"按钮弹出）
 var _btn_cancel_build: Button      # 取消建造按钮（选中建筑后显示）
+var _btn_grid: Button              # 网格显示开关（右上角切换地图网格）
 
 
 func _ready() -> void:
@@ -81,6 +82,19 @@ func _connect_signals() -> void:
 # === 右上角操作按钮（地图扩大 / 副本探索）===
 
 func _build_top_buttons() -> void:
+	# 网格显示按钮：切换地图网格线显示/隐藏（绿色系，与地形色区分）
+	_btn_grid = Button.new()
+	_btn_grid.name = "BtnGridToggle"
+	_btn_grid.text = "▦ 网格"
+	_btn_grid.custom_minimum_size = Vector2(88, 34)
+	_btn_grid.position = Vector2(DESIGN_W - 484, 8)
+	_btn_grid.add_theme_font_override("font", FONT_BTN)
+	_btn_grid.add_theme_font_size_override("font_size", 14)
+	_btn_grid.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.12, 0.4, 0.3, 0.9)))
+	_btn_grid.add_theme_stylebox_override("hover", _make_top_btn_style(Color(0.18, 0.55, 0.42, 1.0)))
+	_btn_grid.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.08, 0.3, 0.22, 1.0)))
+	_btn_grid.pressed.connect(_on_grid_toggle_pressed)
+	add_child(_btn_grid)
 	# 地图按钮：消费金币扩大地图面积（每次 +2 列 +2 行，费用递增）
 	var btn_map := Button.new()
 	btn_map.name = "BtnMapExpand"
@@ -240,6 +254,13 @@ func _on_demolish_mode_pressed() -> void:
 		info_hint.text = "批量拆除模式：左键拖动框选区域（建筑返还、障碍扣清障费），右键退出"
 	else:
 		info_hint.text = BuildingInfo.HINT_BASE
+
+
+func _on_grid_toggle_pressed() -> void:
+	## 切换地图网格线显示/隐藏（右上角网格按钮；网格状态仅影响 3D 地图，不影响建造功能）
+	var show: bool = not grid_view._grid_visible
+	grid_view.set_grid_visible(show)
+	info_hint.text = "已显示地图网格" if show else "已隐藏地图网格（建造时可格点定位仍可用）"
 
 
 func _on_demolition_requested(rect: Rect2i) -> void:
