@@ -843,8 +843,8 @@ func _update_hover_highlight() -> void:
 	var cellf: float = _cell_size_3d()
 	if demolish_mode and _select_start.x >= 0 and _select_end.x >= 0:
 		var r: Rect2i = _selection_rect()
-		# 贴合地形网格：按框选格数细分，顶点取地形高度（完整覆盖起伏地面）
-		_highlight.mesh = _make_terrain_fit_quad(r.size.x, r.size.y, cellf)
+		# 贴合地形网格：按框选格数细分，顶点取该区域真实地形高度（完整覆盖起伏地面）
+		_highlight.mesh = _make_terrain_fit_quad(r.size.x, r.size.y, cellf, r.position.x, r.position.y)
 		_highlight.position = Vector3(r.position.x * cellf, 0.0, r.position.y * cellf)
 		_highlight.scale = Vector3.ONE  # 网格已含真实尺寸与地形高度
 		_highlight.visible = true
@@ -864,8 +864,8 @@ func _update_hover_highlight() -> void:
 			color = Color(0.95, 0.25, 0.25, blink)
 		else:
 			color = Color(0.95, 0.3, 0.3, 0.4)
-		# 贴合地形网格：预选框按 w×h 格细分完整覆盖（不受地形起伏遮挡）
-		_highlight.mesh = _make_terrain_fit_quad(pw, ph, cellf)
+		# 贴合地形网格：预选框按 w×h 格细分，高度取预选框实际位置（不受地形起伏遮挡）
+		_highlight.mesh = _make_terrain_fit_quad(pw, ph, cellf, hover_cell.x, hover_cell.y)
 		_highlight.position = Vector3(hover_cell.x * cellf, 0.0, hover_cell.y * cellf)
 		_highlight.scale = Vector3.ONE
 		_highlight.visible = true
@@ -874,8 +874,8 @@ func _update_hover_highlight() -> void:
 	if hover_cell.x < 0 or hover_cell.y < 0:
 		_highlight.visible = false
 		return
-	# 单格悬停：也换成贴合地形网格（1×1 细分）
-	_highlight.mesh = _make_terrain_fit_quad(1, 1, cellf)
+	# 单格悬停：也换成贴合地形网格（1×1 细分，高度取真实位置）
+	_highlight.mesh = _make_terrain_fit_quad(1, 1, cellf, hover_cell.x, hover_cell.y)
 	_highlight.position = Vector3(hover_cell.x * cellf, 0.0, hover_cell.y * cellf)
 	_highlight.scale = Vector3.ONE
 	_highlight.visible = true
@@ -887,18 +887,21 @@ func _selection_rect() -> Rect2i:
 			abs(_select_end.x - _select_start.x) + 1, abs(_select_end.y - _select_start.y) + 1)
 
 
-## 生成贴合地形的高亮网格：按 w×h 格细分，每个格角取 _ground_height（完整覆盖起伏地面）
-## 渲染时仅缩放为 1、位置取格起点——预选框/框选/悬停完整显示在网格上不受地形起伏影响
-func _make_terrain_fit_quad(w: int, h: int, cell: float) -> Mesh:
+## 生成贴合地形的高亮网格：按 w×h 格细分
+## ox/oy = 实际起始格坐标（高度必须取自真实区域地形，否则与位置错位 → 高的地方被埋）
+## 顶点 Y = _ground_height(ox+gx, oy+gy) + 抬升量：完整覆盖起伏地面
+const HIGHLIFT: float = 0.12  # 高亮抬升量（格单位，0.12 格 ≈ 4.8 单位，防 z-fighting/被地面遮挡）
+
+func _make_terrain_fit_quad(w: int, h: int, cell: float, ox: int = 0, oy: int = 0) -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var vc: int = 0
 	for gx: int in range(w):
 		for gy: int in range(h):
-			var h00: float = _ground_height(gx, gy) + 0.08
-			var h10: float = _ground_height(gx + 1, gy) + 0.08
-			var h11: float = _ground_height(gx + 1, gy + 1) + 0.08
-			var h01: float = _ground_height(gx, gy + 1) + 0.08
+			var h00: float = _ground_height(ox + gx, oy + gy) + HIGHLIFT
+			var h10: float = _ground_height(ox + gx + 1, oy + gy) + HIGHLIFT
+			var h11: float = _ground_height(ox + gx + 1, oy + gy + 1) + HIGHLIFT
+			var h01: float = _ground_height(ox + gx, oy + gy + 1) + HIGHLIFT
 			st.add_vertex(Vector3(gx * cell, h00, gy * cell))
 			st.add_vertex(Vector3((gx + 1) * cell, h10, gy * cell))
 			st.add_vertex(Vector3((gx + 1) * cell, h11, (gy + 1) * cell))
