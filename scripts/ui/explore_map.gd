@@ -28,7 +28,6 @@ var _action_ctrl: BuildingActionPanel
 var _feedback: BuildingFeedback
 var _expand_panel: MapExpandPanel  # 扩大地图购买面板（点"地图"按钮弹出）
 var _btn_cancel_build: Button      # 取消建造按钮（选中建筑后显示）
-var _btn_grid: Button              # 网格显示开关（右上角切换地图网格）
 
 
 func _ready() -> void:
@@ -48,6 +47,7 @@ func _ready() -> void:
 	_expand_panel.name = "MapExpandPanel"
 	add_child(_expand_panel)
 	_expand_panel.expand_requested.connect(_on_expand_requested)
+	_expand_panel.grid_toggle_requested.connect(_on_grid_toggle_requested)
 	_expand_panel.hide()
 
 
@@ -82,19 +82,6 @@ func _connect_signals() -> void:
 # === 右上角操作按钮（地图扩大 / 副本探索）===
 
 func _build_top_buttons() -> void:
-	# 网格显示按钮：切换地图网格线显示/隐藏（绿色系，与地形色区分）
-	_btn_grid = Button.new()
-	_btn_grid.name = "BtnGridToggle"
-	_btn_grid.text = "▦ 网格"
-	_btn_grid.custom_minimum_size = Vector2(88, 34)
-	_btn_grid.position = Vector2(DESIGN_W - 484, 8)
-	_btn_grid.add_theme_font_override("font", FONT_BTN)
-	_btn_grid.add_theme_font_size_override("font_size", 14)
-	_btn_grid.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.12, 0.4, 0.3, 0.9)))
-	_btn_grid.add_theme_stylebox_override("hover", _make_top_btn_style(Color(0.18, 0.55, 0.42, 1.0)))
-	_btn_grid.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.08, 0.3, 0.22, 1.0)))
-	_btn_grid.pressed.connect(_on_grid_toggle_pressed)
-	add_child(_btn_grid)
 	# 地图按钮：消费金币扩大地图面积（每次 +2 列 +2 行，费用递增）
 	var btn_map := Button.new()
 	btn_map.name = "BtnMapExpand"
@@ -180,6 +167,13 @@ func _on_expand_requested(steps: int) -> void:
 	grid_view.queue_redraw()
 
 
+func _on_grid_toggle_requested() -> void:
+	## 面板内网格开关：切换地图网格线显示/隐藏（不影响建造功能）
+	var show: bool = not grid_view._grid_visible
+	grid_view.set_grid_visible(show)
+	info_hint.text = "已显示地图网格" if show else "已隐藏地图网格（建造时可格点定位仍可用）"
+
+
 func _on_explore_pressed() -> void:
 	# 进入副本探索界面（攻城系统，见设计文档 3.11 副本与攻城）
 	get_tree().change_scene_to_file("res://scenes/ui/instance/instance_map.tscn")
@@ -254,13 +248,6 @@ func _on_demolish_mode_pressed() -> void:
 		info_hint.text = "批量拆除模式：左键拖动框选区域（建筑返还、障碍扣清障费），右键退出"
 	else:
 		info_hint.text = BuildingInfo.HINT_BASE
-
-
-func _on_grid_toggle_pressed() -> void:
-	## 切换地图网格线显示/隐藏（右上角网格按钮；网格状态仅影响 3D 地图，不影响建造功能）
-	var show: bool = not grid_view._grid_visible
-	grid_view.set_grid_visible(show)
-	info_hint.text = "已显示地图网格" if show else "已隐藏地图网格（建造时可格点定位仍可用）"
 
 
 func _on_demolition_requested(rect: Rect2i) -> void:
@@ -644,6 +631,7 @@ class MapExpandPanel:
 	const FONT_SERIF: Font = preload("res://assets/fonts/SourceHanSerifCN-Regular.otf")
 
 	signal expand_requested(steps: int)
+	signal grid_toggle_requested  # 网格显示/隐藏切换请求（由 explore_map 转发给 grid_view）
 
 	var _panel: PanelContainer
 	var _info: Label
@@ -651,6 +639,7 @@ class MapExpandPanel:
 	var _hint: Label
 	var _tier_buttons: Array[Button] = []
 	var _tier_steps: Array[int] = []
+	var _grid_btn: Button  # 网格显示/隐藏开关按钮（面板内）
 
 
 	func _init() -> void:
@@ -719,6 +708,19 @@ class MapExpandPanel:
 			vbox.add_child(btn)
 			_tier_buttons.append(btn)
 			_tier_steps.append(steps)
+		# 网格显示开关（放大选项下方，与扩图并列的地图辅助功能）
+		_grid_btn = Button.new()
+		_grid_btn.custom_minimum_size = Vector2(0, 36)
+		_grid_btn.add_theme_font_override("font", FONT_BOLD)
+		_grid_btn.add_theme_font_size_override("font_size", 14)
+		_grid_btn.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		_grid_btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+		_grid_btn.add_theme_color_override("font_pressed_color", Color(0.9, 0.97, 0.94, 1))
+		_grid_btn.add_theme_stylebox_override("normal", _make_btn_style(Color(0.15, 0.45, 0.32, 1.0)))
+		_grid_btn.add_theme_stylebox_override("hover", _make_btn_style(Color(0.2, 0.58, 0.42, 1.0)))
+		_grid_btn.add_theme_stylebox_override("pressed", _make_btn_style(Color(0.1, 0.35, 0.24, 1.0)))
+		_grid_btn.pressed.connect(_on_grid_btn_pressed)
+		vbox.add_child(_grid_btn)
 		# 购买结果/错误提示
 		_hint = Label.new()
 		_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -786,6 +788,7 @@ class MapExpandPanel:
 
 	func open() -> void:
 		refresh()
+		_sync_grid_btn()
 		show()
 		# 面板最小尺寸在进入场景树后才确定，打开时延迟一帧按 offsets 居中（anchors 0.5 下对称 offsets 恒居中）
 		_center_panel.call_deferred()
@@ -802,6 +805,7 @@ class MapExpandPanel:
 
 	func refresh() -> void:
 		## 刷新尺寸/费用/金币与按钮可用态（购买后可继续选购下一档）
+		_sync_grid_btn()
 		var w: int = BuildingSystem.GRID_W
 		var h: int = BuildingSystem.GRID_H
 		_info.text = "当前地图 %d×%d\n每次扩大 +2 列 +2 行，费用逐级递增（%d/%d/%d…）" % [
@@ -823,3 +827,20 @@ class MapExpandPanel:
 			refresh()
 			return
 		expand_requested.emit(steps)
+
+
+	## 同步网格按钮文本（显示"▦ 网格：显示/隐藏"状态）
+	func _sync_grid_btn() -> void:
+		if _grid_btn == null:
+			return
+		var host: Node = get_parent()  # explore_map（持有 grid_view 引用）
+		var on: bool = true
+		if host != null and "grid_view" in host:
+			on = host.grid_view._grid_visible
+		_grid_btn.text = "▦ 网格：%s" % ("隐藏中" if not on else "显示中")
+
+
+	## 切换网格显示/隐藏（交由 explore_map 转发 grid_view）
+	func _on_grid_btn_pressed() -> void:
+		grid_toggle_requested.emit()
+		_sync_grid_btn()
