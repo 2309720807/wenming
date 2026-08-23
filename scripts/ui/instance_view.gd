@@ -292,6 +292,7 @@ func _on_attack_pressed() -> void:
 		_info_label.text = "请先出兵（左侧选择军事设施）"
 		return
 	_battle_active = true
+	_grid.battle_active = true  # 同步到 3D 战场弹幕层
 	_settled = false
 	_battle_timer = 0.0
 	# 初始化单位位置（从战场左侧进入）
@@ -397,6 +398,7 @@ func _cell_center(key: String) -> Vector2:
 
 func _settle_battle(victory: bool) -> void:
 	_battle_active = false
+	_grid.battle_active = false  # 同步到 3D 战场弹幕层
 	_settled = true
 	if victory:
 		var gold: int = 120 + _difficulty * 80 + _army.size() * 15
@@ -436,6 +438,7 @@ class InstanceGrid:
 	# 父类同步的战场数据（接口不变）
 	var enemy_placed: Dictionary = {}
 	var army: Array = []
+	var battle_active: bool = false   # 父类同步的战斗开关（未开战不发弹幕）
 
 	# === 3D 节点 ===
 	var _viewport: SubViewport
@@ -846,6 +849,9 @@ class InstanceGrid:
 	# === 远程弹幕攻击(攻防双方，视觉抛物线弹道) ===
 
 	func _fire_projectiles(delta: float) -> void:
+		# 仅战斗进行中发射弹幕（未开战时单位字典无 pos 键，访问会报错——修复：战斗开关保护）
+		if not battle_active:
+			return
 		# 距离判定沿用父类像素空间(与伤害 tick 对齐)；仅远程(attack_type=ranged)发射弹幕
 		for u in army:
 			if str(u.get("attack_type", "melee")) != "ranged":
@@ -853,7 +859,7 @@ class InstanceGrid:
 			var tk: String = str(u.get("target", ""))
 			if tk == "" or not enemy_placed.has(tk):
 				continue
-			var pos_px: Vector2 = Vector2(u["pos"])
+			var pos_px: Vector2 = Vector2(u.get("pos", Vector2.ZERO))
 			var target_px: Vector2 = _cell_footprint_px_center(tk)
 			var atk_range: float = float(u.get("range", 26.0))
 			if pos_px.distance_to(target_px) > atk_range:
@@ -879,7 +885,7 @@ class InstanceGrid:
 			var best_dist: float = 1e9
 			for i: int in range(army.size()):
 				var u: Dictionary = army[i]
-				var dist: float = dpos_px.distance_to(Vector2(u["pos"]))
+				var dist: float = dpos_px.distance_to(Vector2(u.get("pos", Vector2.ZERO)))
 				if dist < best_dist:
 					best_dist = dist
 					best = i
@@ -890,7 +896,7 @@ class InstanceGrid:
 			_fire_enemy[key] = PROJ_INTERVAL
 			var tu: Dictionary = army[best]
 			# 防御弹幕追踪目标单位(进攻单位在移动)，命中更准
-			_spawn_projectile(str(d["unit_id"]), _px_to_world3(dpos_px), _px_to_world3(Vector2(tu["pos"])), int(tu.get("_gid", -1)))
+			_spawn_projectile(str(d["unit_id"]), _px_to_world3(dpos_px), _px_to_world3(Vector2(tu.get("pos", Vector2.ZERO))), int(tu.get("_gid", -1)))
 		# 冷却递减
 		for gid: int in _fire_army:
 			_fire_army[gid] = maxf(0.0, float(_fire_army[gid]) - delta)
