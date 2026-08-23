@@ -34,7 +34,7 @@ func _ready() -> void:
 			_info_label.text = "🛡 成功击退攻城！获得奖励"
 		else:
 			_info_label.text = "💥 基地被攻破，损失 %d 个设施" % destroyed)
-	_switch_page("military")
+	_open_integrated_page()
 
 
 func _build_ui() -> void:
@@ -74,20 +74,7 @@ func _build_ui() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(spacer)
-	var btn_military := Button.new()
-	btn_military.text = "军事"
-	btn_military.custom_minimum_size = Vector2(96, 38)
-	btn_military.add_theme_font_override("font", FONT_BOLD)
-	btn_military.add_theme_font_size_override("font_size", 15)
-	btn_military.pressed.connect(func() -> void: _switch_page("military"))
-	top.add_child(btn_military)
-	var btn_defense := Button.new()
-	btn_defense.text = "防御"
-	btn_defense.custom_minimum_size = Vector2(96, 38)
-	btn_defense.add_theme_font_override("font", FONT_BOLD)
-	btn_defense.add_theme_font_size_override("font_size", 15)
-	btn_defense.pressed.connect(func() -> void: _switch_page("defense"))
-	top.add_child(btn_defense)
+	# 军事与防御已整合为单一界面（制造/部署/升级/建造同屏），无需军事/防御切换按钮
 	var btn_back := Button.new()
 	btn_back.text = "返回主界面"
 	btn_back.custom_minimum_size = Vector2(130, 38)
@@ -104,15 +91,19 @@ func _build_ui() -> void:
 	content.add_theme_constant_override("separation", 14)
 	add_child(content)
 
-	# 左：军事页（制造列表）/ 防御页（库存列表）
+	# 左：整合面板（上部制造列表 + 下部部署选择/批量升级/扩大基地，同屏无需切换）
+	var left_col := VBoxContainer.new()
+	left_col.custom_minimum_size = Vector2(400, 540)
+	left_col.add_theme_constant_override("separation", 8)
+	content.add_child(left_col)
 	_military_panel = VBoxContainer.new()
-	_military_panel.custom_minimum_size = Vector2(380, 560)
+	_military_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_military_panel.add_theme_constant_override("separation", 8)
-	content.add_child(_military_panel)
+	left_col.add_child(_military_panel)
 	_defense_panel = VBoxContainer.new()
-	_defense_panel.custom_minimum_size = Vector2(380, 560)
-	_defense_panel.add_theme_constant_override("separation", 8)
-	content.add_child(_defense_panel)
+	_defense_panel.custom_minimum_size = Vector2(0, 250)
+	_defense_panel.add_theme_constant_override("separation", 6)
+	left_col.add_child(_defense_panel)
 
 	# 右：基地网格 / 信息
 	var right := VBoxContainer.new()
@@ -150,15 +141,14 @@ func _build_ui() -> void:
 	right.add_child(_info_label)
 
 
-func _switch_page(page: String) -> void:
-	_current_page = page
-	_military_panel.visible = (page == "military")
-	_defense_panel.visible = (page == "defense")
-	_base_grid.edit_mode = (page == "defense")
-	if page == "military":
-		_build_military_page()
-	else:
-		_refresh_defense_panel()
+func _open_integrated_page() -> void:
+	## 军事与防御整合单页：制造 + 部署 + 批量升级 + 建造同屏（无页面切换）
+	_current_page = "defense"  # 保持防御逻辑（库存变化时刷新部署面板）
+	_military_panel.visible = true
+	_defense_panel.visible = true
+	_base_grid.edit_mode = true  # 基地编辑（部署/升级/拆除）常态可用
+	_build_military_page()
+	_refresh_defense_panel()
 
 
 # === 军事页：制造 ===
