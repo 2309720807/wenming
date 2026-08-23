@@ -249,6 +249,52 @@ func batch_demolish(rect: Rect2i) -> Dictionary:
 	return result
 
 
+## 统计区域内可升级建筑（只读）：{count, cost}（已满级/施工中跳过）
+func preview_upgrade(rect: Rect2i) -> Dictionary:
+	var result := {"count": 0, "cost": 0.0}
+	for key: String in placed:
+		var p: Dictionary = placed[key]
+		if p.get("op", "") != "" or not p.get("completed", false):
+			continue
+		var anchor: Vector2i = BuildingGrid.key_to_cell(key)
+		if anchor.x < rect.position.x or anchor.x >= rect.position.x + rect.size.x \
+				or anchor.y < rect.position.y or anchor.y >= rect.position.y + rect.size.y:
+			continue
+		if int(p["level"]) >= BuildingBalance.MAX_LEVEL:
+			continue
+		result["count"] += 1
+		result["cost"] += get_upgrade_cost(p)
+	return result
+
+
+## 区域内已完工建筑批量升级（立即完成，跳过施工时间）；返回 {upgraded, cost, skipped}
+func batch_upgrade(rect: Rect2i) -> Dictionary:
+	var result := {"upgraded": 0, "cost": 0.0, "skipped": 0}
+	for key: String in placed:
+		var p: Dictionary = placed[key]
+		if p.get("op", "") != "" or not p.get("completed", false):
+			continue
+		var anchor: Vector2i = BuildingGrid.key_to_cell(key)
+		if anchor.x < rect.position.x or anchor.x >= rect.position.x + rect.size.x \
+				or anchor.y < rect.position.y or anchor.y >= rect.position.y + rect.size.y:
+			continue
+		if int(p["level"]) >= BuildingBalance.MAX_LEVEL:
+			result["skipped"] += 1
+			continue
+		var cost: float = get_upgrade_cost(p)
+		if GameState.gold < cost:
+			result["skipped"] += 1
+			continue
+		GameState.add_gold(-cost)
+		p["level"] = int(p["level"]) + 1
+		result["upgraded"] += 1
+		result["cost"] += cost
+	if result["upgraded"] > 0:
+		_recalculate_bonuses()
+		grid_changed.emit(Vector2i.ZERO)
+	return result
+
+
 func expand_grid(extra_w: int, extra_h: int) -> void:
 	## 扩大地图：右侧追加列、下侧追加行（消费金币由 UI 层处理），
 	## 地图尺寸随存档持久化（restore_state 以存档网格尺寸为准）

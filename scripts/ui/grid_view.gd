@@ -9,8 +9,8 @@ signal hover_changed(cell: Vector2i)
 signal cell_clicked(cell: Vector2i)
 signal preview_cancel_requested  # 右键单击取消预选建造
 signal drag_place_requested(cell: Vector2i)  # Shift+左键拖动连续建造
-signal demolition_requested(rect: Rect2i)   # 批量拆除框选完成
-signal demolish_mode_changed(on: bool)      # 拆除模式开关
+signal selection_requested(mode: String, rect: Rect2i)  # 框选完成（demolish 拆除 / upgrade 升级）
+signal selection_mode_changed(mode: String)                  # 框选模式开关
 
 const ZOOM_MIN: float = 0.4
 const ZOOM_MAX: float = 3.0
@@ -32,7 +32,8 @@ const PAN_SPEED: float = 1.4
 var zoom: float = 1.0  # 缩放因子（与 BuildingSystem.map_zoom 同步，摄像机距离 = CAM_DIST_BASE / zoom）
 var hover_cell: Vector2i = Vector2i(-1, -1)
 var preview_item: Dictionary = {}  # 当前选中待放置的建筑配置
-var demolish_mode: bool = false
+var selection_mode: String = ""  # "" 关闭 / "demolish" 拆除 / "upgrade" 升级（框选模式）
+var demolish_mode: bool = false  # 兼容旧接口（explore_map 已迁移到 selection_mode）
 # 动画表（兼容旧接口：explore_map / BuildingFeedback 写入，3D 中用于出生/完工表现）
 var place_animations: Dictionary = {}    # "x,y" -> 已播放时长
 var completion_effects: Dictionary = {}  # "x,y" -> 已播放时长
@@ -724,7 +725,7 @@ func _screen_to_cell(screen_pos: Vector2) -> Vector2i:
 
 func _gui_input(event: InputEvent) -> void:
 	# 拆除模式：左键拖动框选（屏幕矩形 → 格子包围盒），右键退出
-	if demolish_mode:
+	if selection_mode != "":
 		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				_select_start = _screen_to_cell(event.position)
@@ -732,7 +733,7 @@ func _gui_input(event: InputEvent) -> void:
 				_update_hover_highlight()
 			else:
 				if _select_start.x >= 0 and _select_end.x >= 0:
-					demolition_requested.emit(Rect2i(
+					selection_requested.emit(selection_mode, Rect2i(
 						mini(_select_start.x, _select_end.x), mini(_select_start.y, _select_end.y),
 						abs(_select_end.x - _select_start.x) + 1, abs(_select_end.y - _select_start.y) + 1))
 				_select_start = Vector2i(-1, -1)
@@ -841,14 +842,17 @@ func _pan_camera(delta: Vector2) -> void:
 ## 悬停高亮：单个格子或框选矩形
 func _update_hover_highlight() -> void:
 	var cellf: float = _cell_size_3d()
-	if demolish_mode and _select_start.x >= 0 and _select_end.x >= 0:
+	if selection_mode == "demolish" and _select_start.x >= 0 and _select_end.x >= 0:
 		var r: Rect2i = _selection_rect()
 		# 贴合地形网格：按框选格数细分，顶点取该区域真实地形高度（完整覆盖起伏地面）
 		_highlight.mesh = _make_terrain_fit_quad(r.size.x, r.size.y, cellf, r.position.x, r.position.y)
 		_highlight.position = Vector3(r.position.x * cellf, 0.0, r.position.y * cellf)
 		_highlight.scale = Vector3.ONE  # 网格已含真实尺寸与地形高度
 		_highlight.visible = true
-		(_highlight.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.4, 0.35, 0.3)
+		if selection_mode == "upgrade":
+			(_highlight.material_override as StandardMaterial3D).albedo_color = Color(0.35, 0.8, 1.0, 0.3)
+		else:
+			(_highlight.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.4, 0.35, 0.3)
 		return
 	# 建造预选框：选中建筑时按建筑真实占地尺寸显示绿（可建）/红（不可建）/红闪（金币不足）
 	if not preview_item.is_empty() and hover_cell.x >= 0 and hover_cell.y >= 0:
@@ -1084,12 +1088,18 @@ func _update_construction_bars() -> void:
 
 # === 工具（explore_map 兼容接口） ===
 
-func set_demolish_mode(on: bool) -> void:
-	demolish_mode = on
+func set_selection_mode(mode: String) -> void:
+	## 框选模式开关："" 关闭 / "demolish" 拆除 / "upgrade" 升级
+	selection_mode = mode
+	demolish_mode = (mode != "")  # 兼容旧接口
 	_select_start = Vector2i(-1, -1)
 	_select_end = Vector2i(-1, -1)
-	demolish_mode_changed.emit(on)
+	selection_mode_changed.emit(mode)
 	_update_hover_highlight()
+
+
+func set_demolish_mode(on: bool) -> void:
+	set_selection_mode("demolish" if on else "")
 
 
 ## 显示/隐藏地图网格线（右上角网格按钮调用；重建地面后状态保持）

@@ -2,11 +2,16 @@
 	"base_width": 15,
 	"base_height": 10,
 	"units": [
-		{"id": "turret", "name": "防御炮塔", "cost_gold": 100, "cost_tech": 5, "width": 1, "height": 1, "attack": 12, "hp": 100, "desc": "基础防御炮塔，对攻城部队持续输出"},
-		{"id": "wall", "name": "城墙", "cost_gold": 20, "cost_tech": 1, "width": 1, "height": 1, "hp": 220, "desc": "阻挡敌人推进的坚固城墙"},
-		{"id": "barracks", "name": "兵营", "cost_gold": 150, "cost_tech": 8, "width": 2, "height": 2, "attack": 6, "hp": 160, "desc": "训练守军，提供近程火力"},
-		{"id": "aa", "name": "防空导弹", "cost_gold": 200, "cost_tech": 15, "width": 1, "height": 1, "attack": 28, "hp": 80, "desc": "对空防御，克制空中单位"},
-		{"id": "armory", "name": "军械库", "cost_gold": 250, "cost_tech": 20, "width": 2, "height": 2, "buff": 1.2, "hp": 120, "desc": "提升基地全部设施攻击力 20%"},
-		{"id": "bunker", "name": "避难所", "cost_gold": 180, "cost_tech": 12, "width": 2, "height": 2, "hp": 300, "desc": "高耐久防御工事，保护人口"}
+		{"id": "turret", "name": "防御炮塔", "role": "defense", "attack_type": "ranged", "range": 110, "cost_gold": 100, "cost_tech": 5, "width": 1, "height": 1, "attack": 12, "hp": 100, "desc": "基础防御炮塔，远程持续输出"},
+		{"id": "wall", "name": "城墙", "role": "defense", "attack_type": "none", "cost_gold": 20, "cost_tech": 1, "width": 1, "height": 1, "hp": 220, "desc": "阻挡敌人推进的坚固城墙"}, 
+		{"id": "barracks", "name": "兵营", "role": "defense", "attack_type": "melee", "cost_gold": 150, "cost_tech": 8, "width": 2, "height": 2, "attack": 6, "hp": 160, "desc": "训练守军，提供近程火力"}, 
+		{"id": "aa", "name": "防空导弹", "role": "defense", "attack_type": "ranged", "range": 140, "cost_gold": 200, "cost_tech": 15, "width": 1, "height": 1, "attack": 28, "hp": 80, "desc": "远程对空防御，克制空中单位"}, 
+		{"id": "armory", "name": "军械库", "role": "defense", "attack_type": "none", "cost_gold": 250, "cost_tech": 20, "width": 2, "height": 2, "buff": 1.2, "hp": 120, "desc": "提升基地全部设施攻击力 20%"}, 
+		{"id": "bunker", "name": "避难所", "role": "defense", "attack_type": "none", "cost_gold": 180, "cost_tech": 12, "width": 2, "height": 2, "hp": 300, "desc": "高耐久防御工事，保护人口"},
+		{"id": "swordsman", "name": "剑士", "role": "offense", "attack_type": "melee", "speed": 90, "cost_gold": 60, "cost_tech": 3, "width": 1, "height": 1, "attack": 14, "hp": 80, "desc": "近战剑士，冲锋陷阵（副本进攻）"},
+		{"id": "archer", "name": "弓箭手", "role": "offense", "attack_type": "ranged", "range": 120, "speed": 70, "cost_gold": 80, "cost_tech": 5, "width": 1, "height": 1, "attack": 10, "hp": 50, "desc": "远程弓箭手，射程外打击（副本进攻）"},
+		{"id": "cavalry", "name": "骑兵", "role": "offense", "attack_type": "melee", "speed": 130, "cost_gold": 120, "cost_tech": 8, "width": 1, "height": 1, "attack": 16, "hp": 100, "desc": "快速骑兵，突袭目标（副本进攻）"},
+		{"id": "battering_ram", "name": "攻城锤", "role": "offense", "attack_type": "melee", "speed": 45, "cost_gold": 150, "cost_tech": 10, "width": 1, "height": 1, "attack": 30, "hp": 200, "desc": "攻城锤，对建筑高伤害（副本进攻）"},
+		{"id": "catapult", "name": "投石车", "role": "offense", "attack_type": "ranged", "range": 150, "speed": 40, "cost_gold": 200, "cost_tech": 15, "width": 1, "height": 1, "attack": 35, "hp": 60, "desc": "远程投石车，毁灭性打击（副本进攻）"}
 	]
 }

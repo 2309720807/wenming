@@ -130,6 +130,7 @@ func _build_ui() -> void:
 		_refresh_defense_panel())
 	_base_grid.remove_requested.connect(func(cell: Vector2i) -> void:
 		MilitarySystem.remove_unit(cell))
+	_base_grid.upgrade_requested.connect(_on_base_upgrade_requested)
 	_base_grid.place_requested.connect(func(cell: Vector2i) -> void:
 		# 部署选中设施到基地（从库存扣减）
 		if _selected_unit.is_empty():
@@ -250,6 +251,9 @@ func _refresh_defense_panel() -> void:
 	box.add_theme_constant_override("separation", 6)
 	scroll.add_child(box)
 	for unit_id: String in MilitarySystem.units_data:
+		# 基地部署只展示防御型设施（offense 进攻单位为副本所用，不占基地）
+		if MilitarySystem.units_data[unit_id].get("role", "defense") != "defense":
+			continue
 		var count: int = int(MilitarySystem.inventory.get(unit_id, 0))
 		var unit: Dictionary = MilitarySystem.units_data[unit_id]
 		var btn := Button.new()
@@ -262,6 +266,14 @@ func _refresh_defense_panel() -> void:
 		btn.pressed.connect(_on_inventory_btn_pressed.bind(unit_id))
 		box.add_child(btn)
 	# 扩大基地
+	var upgrade_btn := Button.new()
+	upgrade_btn.text = "⬆ 批量升级"
+	upgrade_btn.custom_minimum_size = Vector2(0, 36)
+	upgrade_btn.add_theme_font_override("font", FONT_BOLD)
+	upgrade_btn.add_theme_font_size_override("font_size", 13)
+	upgrade_btn.pressed.connect(func() -> void:
+		_base_grid.set_upgrade_mode(not _base_grid.upgrade_mode))
+	_defense_panel.add_child(upgrade_btn)
 	var expand_btn := Button.new()
 	expand_btn.text = "扩大基地（+2x+2）"
 	expand_btn.custom_minimum_size = Vector2(0, 36)
@@ -289,6 +301,27 @@ func _make_batch(unit_id: String, count: int) -> void:
 		_info_label.text = "已批量制造「%s」×%d（库存 %d）" % [
 			MilitarySystem.units_data.get(unit_id, {}).get("name", unit_id),
 			made, int(MilitarySystem.inventory.get(unit_id, 0))]
+
+
+func _on_base_upgrade_requested(rect: Rect2i) -> void:
+	## 基地批量升级：确认后区域内设施立即升级（每级攻击/生命 +25%），消耗金币+科技
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "批量升级"
+	dialog.dialog_text = "确定升级框选区域内的军事设施吗？\n（每级攻击/生命 +25%，消耗金币+科技）"
+	dialog.ok_button_text = "执行升级"
+	dialog.cancel_button_text = "取消"
+	dialog.confirmed.connect(func() -> void:
+		var result: Dictionary = MilitarySystem.batch_upgrade(rect)
+		if int(result["upgraded"]) > 0:
+			_info_label.text = "批量升级完成：%d 座升级（%d 金币 + %d 科技）" % [
+				int(result["upgraded"]), int(result["cost_gold"]), int(result["cost_tech"])]
+		else:
+			_info_label.text = "没有设施被升级（资源不足或区域内无设施）")
+	dialog.close_requested.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.confirmed.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered()
 
 
 func _on_inventory_btn_pressed(unit_id: String) -> void:
@@ -328,12 +361,18 @@ class MilitaryBaseGrid:
 	signal unit_selected(unit_id: String)  # 点击已部署设施时选中其类型
 	signal remove_requested(cell: Vector2i)
 	signal place_requested(cell: Vector2i)  # 点击空白格部署选中设施
+	signal upgrade_requested(rect: Rect2i)  # 批量升级框选完成
 
 	const FONT_BOLD: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
 
 	var edit_mode: bool = false
 	var selected_unit: String = ""  # 父类同步的当前选中设施 id
 	var _hover_cell: Vector2i = Vector2i(-1, -1)
+
+	# === 批量升级框选模式 ===
+	var upgrade_mode: bool = false
+	var _select_start: Vector2i = Vector2i(-1, -1)
+	var _select_end: Vector2i = Vector2i(-1, -1)
 
 	# === 左键拖动批量部署（选中设施后按住左键划过可建格连续部署）===
 	var _mouse_left_down: bool = false
@@ -349,9 +388,40 @@ class MilitaryBaseGrid:
 		mouse_filter = Control.MOUSE_FILTER_STOP
 
 
+	func set_upgrade_mode(on: bool) -> void:
+		## 批量升级框选模式开关（左键拖动框选，右键退出）
+		upgrade_mode = on
+		_select_start = Vector2i(-1, -1)
+		_select_end = Vector2i(-1, -1)
+		queue_redraw()
+
+
 	func _gui_input(event: InputEvent) -> void:
 		if not edit_mode:
 			return
+		# 升级框选：优先处理
+		if upgrade_mode:
+			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+				if event.pressed:
+					_select_start = _pos_to_cell(event.position)
+					_select_end = _select_start
+				else:
+					if _select_start.x >= 0 and _select_end.x >= 0:
+						upgrade_requested.emit(Rect2i(
+							mini(_select_start.x, _select_end.x), mini(_select_start.y, _select_end.y),
+							abs(_select_end.x - _select_start.x) + 1, abs(_select_end.y - _select_start.y) + 1))
+					_select_start = Vector2i(-1, -1)
+					_select_end = Vector2i(-1, -1)
+				queue_redraw()
+				return
+			elif event is InputEventMouseMotion:
+				if _select_start.x >= 0:
+					_select_end = _pos_to_cell(event.position)
+					queue_redraw()
+				return
+			elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+				set_upgrade_mode(false)
+				return
 		if event is InputEventMouseMotion:
 			var c: Vector2i = _pos_to_cell(event.position)
 			if c != _hover_cell:
@@ -424,6 +494,18 @@ class MilitaryBaseGrid:
 			draw_rect(Rect2(rect.position, Vector2(rect.size.x, rect.size.y * 0.8)), c.lightened(0.5), false, 2.0)
 			draw_string(FONT_BOLD, rect.position + Vector2(6, rect.size.y * 0.55), unit.get("name", "?"),
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.95))
+			# 等级徽章（Lv.N）
+			var lv: int = int(p.get("level", 1))
+			if lv > 1:
+				draw_string(FONT_BOLD, rect.position + Vector2(rect.size.x - 40, rect.size.y * 0.55), "Lv.%d" % lv,
+						HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 0.9, 0.45, 0.95))
+		# 升级框选矩形（蓝色半透明）
+		if upgrade_mode and _select_start.x >= 0 and _select_end.x >= 0:
+			var sr: Rect2i = Rect2i(mini(_select_start.x, _select_end.x), mini(_select_start.y, _select_end.y),
+					abs(_select_end.x - _select_start.x) + 1, abs(_select_end.y - _select_start.y) + 1)
+			var srect := Rect2(origin + Vector2(sr.position) * int(cell), Vector2(sr.size) * int(cell))
+			draw_rect(srect, Color(0.35, 0.8, 1.0, 0.22))
+			draw_rect(srect, Color(0.35, 0.8, 1.0, 0.8), false, 2.0)
 		# 悬停高亮
 		if _hover_cell.x >= 0 and _hover_cell.y >= 0:
 			draw_rect(Rect2(origin + Vector2(_hover_cell * int(cell)), Vector2(cell, cell)),

@@ -67,7 +67,7 @@ func _connect_signals() -> void:
 	grid_view.cell_clicked.connect(_on_cell_clicked)
 	grid_view.preview_cancel_requested.connect(_on_preview_cancel_requested)
 	grid_view.drag_place_requested.connect(_on_drag_place_requested)
-	grid_view.demolition_requested.connect(_on_demolition_requested)
+	grid_view.selection_requested.connect(_on_selection_requested)
 	BuildingSystem.grid_changed.connect(func(_cell: Vector2i) -> void: grid_view.queue_redraw())
 	BuildingSystem.building_completed.connect(_feedback.on_completed)
 	BuildingSystem.building_upgraded.connect(_feedback.on_upgraded)
@@ -95,6 +95,19 @@ func _build_top_buttons() -> void:
 	btn_map.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.07, 0.22, 0.42, 1.0)))
 	btn_map.pressed.connect(_on_map_expand_pressed)
 	add_child(btn_map)
+	# 批量升级按钮：框选区域内已完工建筑批量升级（立即完成）
+	var btn_upgrade := Button.new()
+	btn_upgrade.name = "BtnBatchUpgrade"
+	btn_upgrade.text = "⬆ 升级"
+	btn_upgrade.custom_minimum_size = Vector2(88, 34)
+	btn_upgrade.position = Vector2(DESIGN_W - 388, 8)
+	btn_upgrade.add_theme_font_override("font", FONT_BTN)
+	btn_upgrade.add_theme_font_size_override("font_size", 14)
+	btn_upgrade.add_theme_stylebox_override("normal", _make_top_btn_style(Color(0.2, 0.42, 0.55, 0.9)))
+	btn_upgrade.add_theme_stylebox_override("hover", _make_top_btn_style(Color(0.28, 0.6, 0.8, 1.0)))
+	btn_upgrade.add_theme_stylebox_override("pressed", _make_top_btn_style(Color(0.14, 0.3, 0.4, 1.0)))
+	btn_upgrade.pressed.connect(_on_upgrade_mode_pressed)
+	add_child(btn_upgrade)
 	# 批量拆除按钮：框选区域批量拆除建筑与障碍（进入拆除模式后左键拖动框选）
 	var btn_demolish := Button.new()
 	btn_demolish.name = "BtnBatchDemolish"
@@ -240,14 +253,56 @@ func _on_cancel_build_pressed() -> void:
 	info_hint.text = "已退出建造模式"
 
 
+func _on_upgrade_mode_pressed() -> void:
+	## 切换批量升级模式（蓝色框选）
+	grid_view.set_selection_mode("upgrade" if grid_view.selection_mode == "" else "")
+	if grid_view.selection_mode != "":
+		_on_preview_cancel_requested()
+		info_hint.text = "批量升级模式：左键拖动框选区域（已完工建筑立即升级），右键退出"
+	else:
+		info_hint.text = BuildingInfo.HINT_BASE
+
+
+func _on_upgrade_requested(rect: Rect2i) -> void:
+	## 框选完成：统计区域内可升级建筑并确认后批量升级
+	var preview: Dictionary = BuildingSystem.preview_upgrade(rect)
+	if int(preview["count"]) == 0:
+		info_hint.text = "框选区域内没有可升级建筑（需已完工且未满级）"
+		return
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "批量升级"
+	dialog.dialog_text = "框选区域内：\n建筑 %d 座 · 共需 %d 金币\n\n确定执行批量升级吗？（立即完成）" % [
+		int(preview["count"]), int(preview["cost"])]
+	dialog.ok_button_text = "执行升级"
+	dialog.cancel_button_text = "取消"
+	dialog.confirmed.connect(func() -> void:
+		var result: Dictionary = BuildingSystem.batch_upgrade(rect)
+		info_hint.text = "批量升级完成：%d 座升级（花费 %d 金币）%s" % [
+			int(result["upgraded"]), int(result["cost"]),
+			"，%d 座跳过" % int(result["skipped"]) if int(result["skipped"]) > 0 else ""])
+	dialog.close_requested.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.confirmed.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered()
+
+
 func _on_demolish_mode_pressed() -> void:
 	## 切换批量拆除模式（再次点击或右键退出）
-	grid_view.set_demolish_mode(not grid_view.demolish_mode)
-	if grid_view.demolish_mode:
+	grid_view.set_selection_mode("demolish" if grid_view.selection_mode == "" else "")
+	if grid_view.selection_mode != "":
 		_on_preview_cancel_requested()
 		info_hint.text = "批量拆除模式：左键拖动框选区域（建筑返还、障碍扣清障费），右键退出"
 	else:
 		info_hint.text = BuildingInfo.HINT_BASE
+
+
+func _on_selection_requested(mode: String, rect: Rect2i) -> void:
+	## 框选完成：按模式分发（demolish 拆除 / upgrade 升级）
+	if mode == "demolish":
+		_on_demolition_requested(rect)
+	else:
+		_on_upgrade_requested(rect)
 
 
 func _on_demolition_requested(rect: Rect2i) -> void:

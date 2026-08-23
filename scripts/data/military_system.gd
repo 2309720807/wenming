@@ -92,7 +92,7 @@ func place_unit(unit_id: String, cell: Vector2i) -> bool:
 	var hp: int = int(unit.get("hp", 100))
 	base_placed[key] = {
 		"unit_id": unit_id, "width": w, "height": h,
-		"hp": hp, "max_hp": hp,
+		"hp": hp, "max_hp": hp, "level": 1,
 	}
 	inventory[unit_id] = int(inventory[unit_id]) - 1
 	inventory_changed.emit()
@@ -113,6 +113,43 @@ func remove_unit(cell: Vector2i) -> bool:
 	GameState.add_tech(float(unit.get("cost_tech", 0)) * 0.5)
 	base_changed.emit(cell)
 	return true
+
+
+## 单设施升级费用（随等级递增）：金币/科技 = 制造费 × 0.6 × 等级
+func upgrade_cost(unit: Dictionary, level: int) -> Dictionary:
+	return {
+		"gold": float(unit.get("cost_gold", 0)) * 0.6 * float(level),
+		"tech": float(unit.get("cost_tech", 0)) * 0.6 * float(level),
+	}
+
+
+## 区域内设施批量升级（立即生效，每级攻击/生命 +25%）；返回 {upgraded, cost_gold, cost_tech, skipped}
+func batch_upgrade(rect: Rect2i) -> Dictionary:
+	var result := {"upgraded": 0, "cost_gold": 0.0, "cost_tech": 0.0, "skipped": 0}
+	for key: String in base_placed:
+		var p: Dictionary = base_placed[key]
+		var anchor: Vector2i = _key_to_cell(key)
+		if anchor.x < rect.position.x or anchor.x >= rect.position.x + rect.size.x \
+				or anchor.y < rect.position.y or anchor.y >= rect.position.y + rect.size.y:
+			continue
+		var unit: Dictionary = units_data.get(p["unit_id"], {})
+		var level: int = int(p.get("level", 1))
+		var cost: Dictionary = upgrade_cost(unit, level)
+		if GameState.gold < float(cost["gold"]) or GameState.tech_points < float(cost["tech"]):
+			result["skipped"] += 1
+			continue
+		GameState.add_gold(-float(cost["gold"]))
+		GameState.add_tech(-float(cost["tech"]))
+		p["level"] = level + 1
+		# 每级生命/攻击提升 25%
+		p["max_hp"] = int(float(unit.get("hp", 100)) * pow(1.25, float(level)))
+		p["hp"] = p["max_hp"]
+		result["upgraded"] += 1
+		result["cost_gold"] += float(cost["gold"])
+		result["cost_tech"] += float(cost["tech"])
+	if result["upgraded"] > 0:
+		base_changed.emit(Vector2i.ZERO)
+	return result
 
 
 ## 扩大军事基地：+2 列 +2 行，费用递增（金币 + 科技）
@@ -140,11 +177,15 @@ func expand_base() -> Dictionary:
 
 ## 军事规模：库存战力 + 部署设施战力（含军械库加成）
 func military_score() -> int:
+	## 军事规模只统计防御角色（offense 进攻单位为副本所用，不参与基地防御）
 	var score: int = 0
 	for unit_id: String in inventory:
-		score += int(inventory[unit_id]) * _unit_power(units_data.get(unit_id, {}))
+		if units_data.get(unit_id, {}).get("role", "defense") == "defense":
+			score += int(inventory[unit_id]) * _unit_power(units_data.get(unit_id, {}))
 	for key: String in base_placed:
-		score += _unit_power(units_data.get(base_placed[key]["unit_id"], {}))
+		var p: Dictionary = base_placed[key]
+		var level: int = int(p.get("level", 1))
+		score += int(_unit_power(units_data.get(p["unit_id"], {})) * (1.0 + 0.2 * float(level - 1)))
 	return score
 
 

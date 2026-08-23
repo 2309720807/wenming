@@ -113,6 +113,9 @@ func _build_ui() -> void:
 	box.add_theme_constant_override("separation", 6)
 	scroll.add_child(box)
 	for unit_id: String in MilitarySystem.units_data:
+		# 副本出兵只显示进攻型单位（防御设施不可用于进攻，见设计文档 3.11）
+		if MilitarySystem.units_data[unit_id].get("role", "defense") != "offense":
+			continue
 		var unit: Dictionary = MilitarySystem.units_data[unit_id]
 		var btn := Button.new()
 		btn.text = "➤ %s（库存 %d）" % [unit.get("name", ""), int(MilitarySystem.inventory.get(unit_id, 0))]
@@ -257,6 +260,8 @@ func _add_army(unit_id: String) -> void:
 		"unit_id": unit_id, "hp": float(unit.get("hp", 50)),
 		"max_hp": float(unit.get("hp", 50)),
 		"atk": float(unit.get("attack", 8)),
+		"attack_type": unit.get("attack_type", "melee"),
+		"range": float(unit.get("range", 26.0)),
 	})
 	_refresh_army_label()
 	_info_label.text = "已出兵「%s」（剩余 %d 名部队）" % [unit.get("name", ""), _army.size()]
@@ -294,7 +299,8 @@ func _on_attack_pressed() -> void:
 	for u in _army:
 		u["pos"] = Vector2(30.0, 60.0 + float(idx) * 26.0)
 		u["target"] = ""
-		u["speed"] = 85.0
+		# 速度按兵种数据（远程慢、骑兵快）
+		u["speed"] = float(MilitarySystem.units_data.get(u["unit_id"], {}).get("speed", 85.0))
 		idx += 1
 	_result_label.text = ""
 	_info_label.text = "⚔ 战斗开始！部队正在推进..."
@@ -320,11 +326,13 @@ func _process(delta: float) -> void:
 		var target_pos: Vector2 = _cell_center(u["target"])
 		var pos: Vector2 = Vector2(u["pos"])
 		var dist: float = pos.distance_to(target_pos)
-		if dist > 26.0:
+		# 攻击距离：远程兵种（attack_type=ranged）在射程外停下攻击，近战贴近攻击
+		var atk_range: float = float(u.get("range", 26.0)) if u.get("attack_type", "melee") == "ranged" else 26.0
+		if dist > atk_range:
 			pos += (target_pos - pos).normalized() * float(u["speed"]) * delta
 			u["pos"] = pos
 		else:
-			# 攻击目标（3x 战斗节奏）
+			# 攻击目标（5x 战斗节奏）
 			target["hp"] = float(target["hp"]) - float(u["atk"]) * delta * 5.0
 			if float(target["hp"]) <= 0.0:
 				_enemy_placed.erase(u["target"])
@@ -345,7 +353,9 @@ func _process(delta: float) -> void:
 			if dist < best_dist:
 				best_dist = dist
 				best = i
-		if best >= 0 and best_dist < 90.0:
+		# 防御设施按数据射程反击（ranged 远、wall 等无攻击自动跳过）
+		var d_range: float = float(unit.get("range", 90.0))
+		if best >= 0 and best_dist < d_range:
 			_army[best]["hp"] = float(_army[best]["hp"]) - atk * delta * 5.0
 	# 清理死亡单位
 	var alive: Array[Dictionary] = []
