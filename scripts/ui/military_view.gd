@@ -839,6 +839,27 @@ class MilitaryBaseGrid:
 				_update_camera()
 			return
 		if not edit_mode:
+			# 非防御编辑态（如军事页）：仍支持左键拖动旋转 + 已上方的滚轮缩放
+			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+				_mouse_left_down = event.pressed
+				if event.pressed:
+					_press_pos = event.position
+					_last_mouse_pos = event.position
+					_rotating = false
+				else:
+					_rotating = false
+				return
+			elif event is InputEventMouseMotion:
+				if _mouse_left_down and not _rotating \
+						and event.position.distance_to(_press_pos) > DRAG_THRESHOLD:
+					_rotating = true
+				if _rotating:
+					var d: Vector2 = event.position - _last_mouse_pos
+					_yaw -= d.x * ROTATE_SPEED
+					_pitch = clampf(_pitch + d.y * ROTATE_SPEED, CAM_PITCH_MIN, CAM_PITCH_MAX)
+					_update_camera()
+				_last_mouse_pos = event.position
+				return
 			return
 		# 升级框选：优先处理（左键拖动框选，右键退出）
 		if upgrade_mode:

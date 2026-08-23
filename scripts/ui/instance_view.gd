@@ -677,7 +677,8 @@ class InstanceGrid:
 				_rotating = true
 			if _rotating:
 				var delta: Vector2 = event.position - _last_mouse_pos
-				_yaw -= delta.x * ROTATE_SPEED
+				# 与防御基地旋转方向一致（防御基地使用 sin/cos 相位，这里反号对齐视觉方向）
+				_yaw += delta.x * ROTATE_SPEED
 				_pitch = clampf(_pitch + delta.y * ROTATE_SPEED, CAM_PITCH_MIN, CAM_PITCH_MAX)
 				_update_camera()
 			_last_mouse_pos = event.position
