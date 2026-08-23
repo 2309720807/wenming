@@ -770,7 +770,8 @@ class InstanceGrid:
 			var gid: int = _ensure_army_gid(u)
 			seen[gid] = true
 			var info: Dictionary = _army_node_map[gid]
-			var wp: Vector3 = _px_to_world3(Vector2(u["pos"]))
+			# 出兵后战斗未开始时单位还没有 pos 键（战斗开始才初始化），防御性取默认原点
+			var wp: Vector3 = _px_to_world3(Vector2(u.get("pos", Vector2.ZERO)))
 			(info["root"] as Node3D).position = wp
 			info["pos"] = wp
 			var ratio: float = clampf(float(u["hp"]) / maxf(float(u["max_hp"]), 0.001), 0.0, 1.0)
@@ -1024,4 +1025,3 @@ class InstanceGrid:
 			var idx: int = int(done[done.size() - 1 - i])
 			(_particles[idx]["node"] as Node).queue_free()
 			_particles.remove_at(idx)
-
