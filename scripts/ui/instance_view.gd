@@ -431,7 +431,13 @@ class InstanceGrid:
 	const CAM_DIST: float = 68.0       # 摄像机到目标距离(世界单位)
 	const CAM_PITCH: float = 0.6       # 俯视俯角(弧度)
 	const CAM_YAW_INIT: float = -0.7   # 初始轨道方位角(弧度)
-	const CAM_YAW_SPEED: float = 0.05  # 战斗时轨道旋转角速度(弧度/秒)
+	const CAM_YAW_SPEED: float = 0.05  # 保留常量（自动旋转已禁，改为鼠标拖动）
+	const ROTATE_SPEED: float = 0.006  # 鼠标拖动旋转角速度(弧度/像素)
+	const DRAG_THRESHOLD: float = 6.0  # 拖动超过该像素判定为旋转而非点击
+	const CAM_PITCH_MIN: float = 0.12
+	const CAM_PITCH_MAX: float = 1.35
+	const CAM_DIST_MIN: float = 30.0
+	const CAM_DIST_MAX: float = 140.0
 	const PROJ_FLIGHT: float = 0.4     # 弹幕飞行时间(秒)
 	const PROJ_INTERVAL: float = 0.4   # 单个单位/设施的发射间隔(秒)
 
@@ -452,6 +458,7 @@ class InstanceGrid:
 
 	# === 摄像机状态 ===
 	var _yaw: float = CAM_YAW_INIT
+	var _pitch: float = CAM_PITCH
 	var _cam_target: Vector3 = Vector3.ZERO
 
 	# === 运行时状态 ===
@@ -463,9 +470,16 @@ class InstanceGrid:
 	var _projectiles: Array[Dictionary] = []
 	var _particles: Array[Dictionary] = []
 
+	# === 鼠标拖动旋转输入状态 ===
+	var _mouse_left_down: bool = false
+	var _press_pos: Vector2 = Vector2.ZERO
+	var _last_mouse_pos: Vector2 = Vector2.ZERO
+	var _rotating: bool = false
+	var _cam_dist: float = CAM_DIST
+
 
 	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mouse_filter = Control.MOUSE_FILTER_STOP
 		set_process(true)  # 明确开启逐帧处理(同步单位位置/弹幕/摄像机)
 		_build_3d_world()
 
@@ -627,18 +641,47 @@ class InstanceGrid:
 
 
 	func _update_camera() -> void:
-		# 轨道式轻微俯视：以网格中心为注视点，方位角 _yaw + 俯角 CAM_PITCH 绕行
-		var horiz: float = cos(CAM_PITCH) * CAM_DIST
-		var pos := _cam_target + Vector3(cos(_yaw) * horiz, sin(CAM_PITCH) * CAM_DIST, sin(_yaw) * horiz)
+		# 轨道式轻微俯视：以网格中心为注视点，方位角 _yaw + 俯角 _pitch 绕行
+		var horiz: float = cos(_pitch) * _cam_dist
+		var pos := _cam_target + Vector3(cos(_yaw) * horiz, sin(_pitch) * _cam_dist, sin(_yaw) * horiz)
 		_camera.position = pos
 		_camera.look_at(_cam_target, Vector3.UP)
 
 
-	func _update_camera_orbit(delta: float) -> void:
-		# 战斗进行中(既搜寻到目标又已出兵)缓慢轨道旋转，营造轻微俯视轨道感；其余时间静止
-		if not enemy_placed.is_empty() and not army.is_empty():
-			_yaw += CAM_YAW_SPEED * delta
+	func _update_camera_orbit(_delta: float) -> void:
+		# 自动旋转已禁用：改为鼠标左键拖动旋转（见 _gui_input），这里仅保持调用入口
 		_update_camera()
+
+
+	func _gui_input(event: InputEvent) -> void:
+		# 鼠标左键拖动旋转视角（类似防御基地/主地图）+ 滚轮缩放
+		if event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_WHEEL_UP
+				or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+			if event.pressed:
+				var factor: float = 0.88 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.14
+				_cam_dist = clampf(_cam_dist * factor, CAM_DIST_MIN, CAM_DIST_MAX)
+				_update_camera()
+			return
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			_mouse_left_down = event.pressed
+			if event.pressed:
+				_press_pos = event.position
+				_last_mouse_pos = event.position
+				_rotating = false
+			else:
+				_rotating = false
+			return
+		elif event is InputEventMouseMotion:
+			if _mouse_left_down and not _rotating \
+					and event.position.distance_to(_press_pos) > DRAG_THRESHOLD:
+				_rotating = true
+			if _rotating:
+				var delta: Vector2 = event.position - _last_mouse_pos
+				_yaw -= delta.x * ROTATE_SPEED
+				_pitch = clampf(_pitch + delta.y * ROTATE_SPEED, CAM_PITCH_MIN, CAM_PITCH_MAX)
+				_update_camera()
+			_last_mouse_pos = event.position
+			return
 
 
 	# === 子视口分辨率(同 grid_view：渲染分辨率=布局×缩放×超采样，显示时按 1/factor 反向缩放) ===

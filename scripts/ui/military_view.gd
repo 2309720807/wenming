@@ -452,6 +452,7 @@ class MilitaryBaseGrid:
 		vpc.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		vpc.position = Vector2.ZERO
 		vpc.stretch = false  # 手动管理缩放，任意分辨率不模糊（同 grid_view.gd）
+		vpc.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 关键：让鼠标事件穿透到 MilitaryBaseGrid._gui_input（拖动旋转/滚轮缩放）
 		add_child(vpc)
 		_viewport_container = vpc
 		var vp := SubViewport.new()
