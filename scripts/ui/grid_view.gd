@@ -842,7 +842,8 @@ func _pan_camera(delta: Vector2) -> void:
 ## 悬停高亮：单个格子或框选矩形
 func _update_hover_highlight() -> void:
 	var cellf: float = _cell_size_3d()
-	if selection_mode == "demolish" and _select_start.x >= 0 and _select_end.x >= 0:
+	# 框选矩形：拆除红色 / 升级青色，任一框选模式进行中都应显示（guard 用 != "" 而非 == "demolish"）
+	if selection_mode != "" and _select_start.x >= 0 and _select_end.x >= 0:
 		var r: Rect2i = _selection_rect()
 		# 贴合地形网格：按框选格数细分，顶点取该区域真实地形高度（完整覆盖起伏地面）
 		_highlight.mesh = _make_terrain_fit_quad(r.size.x, r.size.y, cellf, r.position.x, r.position.y)

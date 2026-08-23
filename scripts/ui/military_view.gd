@@ -355,8 +355,10 @@ func _make_card_style() -> StyleBoxFlat:
 class MilitaryBaseGrid:
 	extends Control
 
-	## 军事基地网格：绘制 base_grid/base_placed，点击部署选中设施，右键拆除；
-	## 支持选中设施后左键拖动批量部署（划过可建格连续部署，同主地图连续建造）。
+	## 军事基地网格 3D 化：SubViewport 渲染（参考 grid_view.gd 架构）+ 地面平铺 + MilitaryMeshes 契约生成设施模型，
+	## 轨道摄像机（滚轮缩放 / 左键拖动旋转）+ 射线拾取；保留选中 / 部署 / 拆除 / 批量升级框选交互；
+	## 远程防御设施（turret/aa）周期性向基地外侧发射弹幕（抛物线视觉）。
+	## 设计依据：docs/design/game_design.md 3.12（3D 化 + 弹幕表现）
 
 	signal unit_selected(unit_id: String)  # 点击已部署设施时选中其类型
 	signal remove_requested(cell: Vector2i)
@@ -365,174 +367,607 @@ class MilitaryBaseGrid:
 
 	const FONT_BOLD: Font = preload("res://assets/fonts/SourceHanSansCN-Bold.ttf")
 
+	# === 3D 网格与摄像机参数 ===
+	const CELL: float = 6.0                    # 每格 3D 世界单位（基地 15×10 → 90×60）
+	const CAM_DIST_BASE: float = 150.0         # 初始摄像机距离（可看全基地）
+	const CAM_DIST_MIN: float = 38.0
+	const CAM_DIST_MAX: float = 420.0
+	const CAM_YAW_INIT: float = 0.0            # 面向基地正南（轻微斜视）
+	const CAM_PITCH_INIT: float = 0.6
+	const CAM_PITCH_MIN: float = 0.12
+	const CAM_PITCH_MAX: float = 1.35
+	const ROTATE_SPEED: float = 0.006
+	const HIGHLIFT: float = 0.25               # 高亮拾升量（防 z-fighting / 被地面遮挡）
+
+	# === 弹幕（远程防御）参数 ===
+	const BARRAGE_INTERVAL: float = 2.5        # 每 2.5 秒发射（错相）
+	const BARRAGE_RANGE: float = 34.0          # 弹体飞离基地外侧的距离
+	const PROJECTILE_DUR: float = 1.15         # 单发飞行时间（秒）
+	const ARC_HEIGHT: float = 13.0             # 抛物线弹道峰值高度
+
 	var edit_mode: bool = false
 	var selected_unit: String = ""  # 父类同步的当前选中设施 id
 	var _hover_cell: Vector2i = Vector2i(-1, -1)
 
-	# === 批量升级框选模式 ===
+	# === 批量升级框选 ===
 	var upgrade_mode: bool = false
 	var _select_start: Vector2i = Vector2i(-1, -1)
 	var _select_end: Vector2i = Vector2i(-1, -1)
 
-	# === 左键拖动批量部署（选中设施后按住左键划过可建格连续部署）===
+	# === 拖动交互状态 ===
 	var _mouse_left_down: bool = false
 	var _press_pos: Vector2 = Vector2.ZERO
 	var _press_cell: Vector2i = Vector2i(-1, -1)
 	var _click_armed: bool = false  # 按下在空白格，等待拖动/单击判定
 	var _dragging: bool = false
+	var _rotating: bool = false      # 左键拖动旋转视角
 	var _last_drag_cell: Vector2i = Vector2i(-1, -1)
+	var _last_mouse_pos: Vector2 = Vector2.ZERO
 	const DRAG_THRESHOLD: float = 6.0  # 超过该像素距离视为拖动而非单击
+
+	# === 摄像机状态 ===
+	var _cam_dist: float = CAM_DIST_BASE
+	var _yaw: float = CAM_YAW_INIT
+	var _pitch: float = CAM_PITCH_INIT
+	var _cam_target: Vector3 = Vector3.ZERO  # 注视点（基地中心）
+
+	# === 3D 节点 ===
+	var _viewport: SubViewport
+	var _viewport_container: SubViewportContainer  # 手动管理尺寸/缩放（见 _update_viewport_size）
+	var _world: Node3D
+	var _camera: Camera3D
+	var _ground_root: Node3D
+	var _object_root: Node3D
+	var _highlight: MeshInstance3D  # 悬停/框选高亮
+	var _sun: DirectionalLight3D
+
+	# === 弹幕 / 粒子状态 ===
+	var _defenders: Array[Dictionary] = []     # [{key, center, timer}] 远程防御设施（turret/aa）
+	var _barrages: Array[Dictionary] = []      # [{node, start, target, t, dur, arc}] 在途弹体
+	var _particles: Array[Dictionary] = []     # [{node, vel, life, max_life}] 命中粒子
 
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
+		_build_3d_world()
+		_cam_target = Vector3(float(MilitarySystem.BASE_W) * CELL * 0.5, 0.0,
+				float(MilitarySystem.BASE_H) * CELL * 0.5)
+		_cam_dist = maxf(CAM_DIST_BASE, float(maxi(MilitarySystem.BASE_W, MilitarySystem.BASE_H)) * CELL * 1.15)
+		_update_camera()
+		# 数据层变化 → 3D 重建（部署/拆除/升级/扩大基地/攻城破坏均会发出）
+		MilitarySystem.base_changed.connect(func(_c: Vector2i) -> void: _rebuild_all())
+		_rebuild_all()
 
+
+	func _process(delta: float) -> void:
+		_update_viewport_size()  # 每帧同步子视口分辨率（父级缩放变化不触发 TRANSFORM_CHANGED，轮询可靠）
+		_tick_barrages(delta)
+		_tick_particles(delta)
+
+
+	# === 3D 世界构建 ===
+
+	func _build_3d_world() -> void:
+		var vpc := SubViewportContainer.new()
+		vpc.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		vpc.position = Vector2.ZERO
+		vpc.stretch = false  # 手动管理缩放，任意分辨率不模糊（同 grid_view.gd）
+		add_child(vpc)
+		_viewport_container = vpc
+		var vp := SubViewport.new()
+		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		vp.size = _physical_size()
+		vpc.add_child(vp)
+		_viewport = vp
+		set_notify_transform(true)  # 监听根缩放变化（窗口/界面缩放时更新子视口分辨率）
+		_world = Node3D.new()
+		_world.name = "BaseWorld3D"
+		vp.add_child(_world)
+		# 光照：日光 + 冷色补光 + 环境（深蓝军事基地夜色基调）
+		_sun = DirectionalLight3D.new()
+		_sun.rotation_degrees = Vector3(-48, -34, 0)
+		_sun.light_energy = 1.0
+		_sun.light_color = Color(0.85, 0.92, 1.0)
+		_sun.shadow_enabled = true
+		_sun.shadow_bias = 0.02
+		_world.add_child(_sun)
+		var fill := DirectionalLight3D.new()
+		fill.rotation_degrees = Vector3(-30, 130, 0)
+		fill.light_energy = 0.4
+		fill.light_color = Color(0.6, 0.72, 1.0)
+		_world.add_child(fill)
+		var env := WorldEnvironment.new()
+		var sky := Environment.new()
+		sky.background_mode = Environment.BG_COLOR
+		sky.background_color = Color(0.012, 0.02, 0.05)
+		sky.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		sky.ambient_light_color = Color(0.35, 0.45, 0.65)
+		sky.ambient_light_energy = 0.7
+		env.environment = sky
+		_world.add_child(env)
+		_ground_root = Node3D.new()
+		_ground_root.name = "Ground"
+		_world.add_child(_ground_root)
+		_object_root = Node3D.new()
+		_object_root.name = "Objects"
+		_world.add_child(_object_root)
+		_camera = Camera3D.new()
+		_camera.fov = 42.0
+		_camera.near = 0.5
+		_camera.far = 6000.0
+		_world.add_child(_camera)
+		# 悬停/框选高亮（蓝色半透明地面矩形）
+		_highlight = MeshInstance3D.new()
+		_highlight.visible = false
+		_highlight.mesh = _make_flat_quad(1.0, 1.0)
+		_highlight.material_override = _make_flat_mat(Color(0.4, 0.8, 1.0, 0.3))
+		_object_root.add_child(_highlight)
+
+
+	# 深蓝灰军事混凝土地面：确定性种子，每格微差色阶（重建不变）
+	const GROUND_SHADES: Array[Color] = [
+		Color(0.10, 0.14, 0.22, 1.0),
+		Color(0.13, 0.18, 0.28, 1.0),
+		Color(0.09, 0.12, 0.19, 1.0),
+	]
+
+	func _ground_shade(gx: int, gy: int) -> Color:
+		var seed: int = 31 * gx + 17 * gy
+		return GROUND_SHADES[abs(seed) % GROUND_SHADES.size()]
+
+
+	func _build_ground() -> void:
+		for child: Node in _ground_root.get_children():
+			child.queue_free()
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var vc: int = 0
+		var cw: int = MilitarySystem.BASE_W
+		var ch: int = MilitarySystem.BASE_H
+		for x: int in range(cw):
+			for y: int in range(ch):
+				st.set_color(_ground_shade(x, y))
+				st.add_vertex(Vector3(x * CELL, 0.0, y * CELL))
+				st.add_vertex(Vector3((x + 1) * CELL, 0.0, y * CELL))
+				st.add_vertex(Vector3((x + 1) * CELL, 0.0, (y + 1) * CELL))
+				st.add_vertex(Vector3(x * CELL, 0.0, (y + 1) * CELL))
+				st.add_index(vc); st.add_index(vc + 1); st.add_index(vc + 2)
+				st.add_index(vc); st.add_index(vc + 2); st.add_index(vc + 3)
+				vc += 4
+		var ground := MeshInstance3D.new()
+		ground.mesh = st.commit()
+		var mat := StandardMaterial3D.new()
+		mat.vertex_color_use_as_albedo = true
+		mat.roughness = 0.92
+		mat.metallic = 0.02
+		ground.material_override = mat
+		_ground_root.add_child(ground)
+		# 格子线（贴合平面 y=0）
+		var lines := ImmediateMesh.new()
+		var line_color := Color(0.32, 0.5, 0.78, 0.35)
+		lines.surface_begin(Mesh.PRIMITIVE_LINES)
+		for x: int in range(cw + 1):
+			lines.surface_set_color(line_color)
+			lines.surface_add_vertex(Vector3(x * CELL, 0.03, 0.0))
+			lines.surface_add_vertex(Vector3(x * CELL, 0.03, ch * CELL))
+		for y: int in range(ch + 1):
+			lines.surface_set_color(line_color)
+			lines.surface_add_vertex(Vector3(0.0, 0.03, y * CELL))
+			lines.surface_add_vertex(Vector3(cw * CELL, 0.03, y * CELL))
+		lines.surface_end()
+		var lm := MeshInstance3D.new()
+		lm.name = "GridLines"
+		lm.mesh = lines
+		var lmat := StandardMaterial3D.new()
+		lmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		lmat.vertex_color_use_as_albedo = true
+		lm.material_override = lmat
+		_ground_root.add_child(lm)
+
+
+	# === 重建全部设施 ===
+
+	func _rebuild_all() -> void:
+		if _object_root == null:
+			return
+		# 清理在途弹体与粒子（数据变化重建时不遗留指向已释放节点的引用）
+		for b: Dictionary in _barrages:
+			(b["node"] as Node).queue_free()
+		_barrages.clear()
+		for pt: Dictionary in _particles:
+			(pt["node"] as Node).queue_free()
+		_particles.clear()
+		for child: Node in _object_root.get_children():
+			if child != _highlight:
+				child.queue_free()
+		_defenders.clear()
+		_hover_cell = Vector2i(-1, -1)
+		_build_ground()
+		for key: String in MilitarySystem.base_placed:
+			var p: Dictionary = MilitarySystem.base_placed[key]
+			_spawn_unit(MilitarySystem._key_to_cell(key), p)
+			var uid: String = p["unit_id"]
+			if uid == "turret" or uid == "aa":
+				_register_defender(key, p)
+		_update_hover_highlight()
+
+
+	func _spawn_unit(anchor: Vector2i, p: Dictionary) -> void:
+		var unit_id: String = p["unit_id"]
+		var w: int = int(p["width"])
+		var h: int = int(p["height"])
+		# 冻结契约：设施模型由 MilitaryMeshes 生成（2×2 模型已含比例），只读禁改
+		var model: Node3D = MilitaryMeshes.build_unit_model(unit_id, CELL, int(p.get("level", 1)))
+		model.name = "U_%d,%d" % [anchor.x, anchor.y]
+		model.position = Vector3((anchor.x + w * 0.5) * CELL, 0.0, (anchor.y + h * 0.5) * CELL)
+		_object_root.add_child(model)
+		# 等级 >1 显示金色 "Lv.N" 徽章（Label3D 广告牌，参考 grid_view.gd）
+		var lv: int = int(p.get("level", 1))
+		if lv > 1:
+			var badge := Label3D.new()
+			badge.text = "Lv.%d" % lv
+			badge.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			badge.font_size = maxi(6, int(CELL * 0.32))
+			badge.outline_size = maxi(2, int(CELL * 0.05))
+			badge.outline_modulate = Color(0, 0, 0, 0.85)
+			badge.modulate = Color(1.0, 0.9, 0.45, 1.0)
+			badge.no_depth_test = true
+			badge.position = Vector3(0.0, CELL * 1.7, 0.0)
+			badge.pixel_size = 0.005
+			model.add_child(badge)
+
+
+	# === 远程防御弹幕 ===
+
+	func _register_defender(key: String, p: Dictionary) -> void:
+		var anchor: Vector2i = MilitarySystem._key_to_cell(key)
+		var c: Vector3 = Vector3((anchor.x + int(p["width"]) * 0.5) * CELL, 0.0,
+				(anchor.y + int(p["height"]) * 0.5) * CELL)
+		# 错相：用 key 哈希确定性生成初始计时（0~间隔），避免所有设施同帧齐射
+		var phase: float = (abs(hash(key)) % 1000) / 1000.0 * BARRAGE_INTERVAL
+		_defenders.append({"key": key, "center": c, "timer": phase})
+
+
+	func _fire_shot(def: Dictionary) -> void:
+		var start: Vector3 = Vector3(def["center"])
+		start.y = CELL * 0.6  # 炮口高度
+		# 无真实敌人：向基地外侧离中心远端方向发射（弹幕展示）
+		var base_center: Vector3 = Vector3(float(MilitarySystem.BASE_W) * CELL * 0.5, 0.0,
+				float(MilitarySystem.BASE_H) * CELL * 0.5)
+		var dir: Vector3 = start - base_center
+		if dir.length() < 0.1:
+			dir = Vector3.RIGHT
+		dir = Vector3(dir.x, 0.0, dir.z).normalized()
+		var target: Vector3 = start + dir * BARRAGE_RANGE
+		var proj := MeshInstance3D.new()
+		proj.name = "Proj_" + String(def["key"])
+		var sm := SphereMesh.new()
+		sm.radius = CELL * 0.09
+		sm.height = CELL * 0.18
+		sm.radial_segments = 8
+		sm.rings = 4
+		proj.mesh = sm
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.62, 0.25)
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.4, 0.1)
+		mat.emission_energy_multiplier = 1.6
+		proj.material_override = mat
+		_object_root.add_child(proj)
+		_barrages.append({"node": proj, "start": start, "target": target, "t": 0.0,
+				"dur": PROJECTILE_DUR, "arc": ARC_HEIGHT})
+
+
+	func _tick_barrages(delta: float) -> void:
+		# 发射计时（错相：各设施初始计时不同）
+		for i: int in range(_defenders.size()):
+			var def: Dictionary = _defenders[i]
+			def["timer"] = float(def["timer"]) + delta
+			if float(def["timer"]) >= BARRAGE_INTERVAL:
+				def["timer"] = float(def["timer"]) - BARRAGE_INTERVAL
+				_fire_shot(def)
+		# 推进弹体（抛物线，命中后消失+粒子）
+		var done: Array[int] = []
+		for i: int in range(_barrages.size()):
+			var b: Dictionary = _barrages[i]
+			var t: float = float(b["t"]) + delta
+			b["t"] = t
+			var k: float = t / float(b["dur"])
+			if k >= 1.0:
+				_spawn_impact_burst(Vector3(b["target"]))
+				done.append(i)
+				continue
+			var start: Vector3 = Vector3(b["start"])
+			var target: Vector3 = Vector3(b["target"])
+			var pos: Vector3 = start.lerp(target, k)
+			pos.y += float(b["arc"]) * 4.0 * k * (1.0 - k)  # 抛物线弧顶
+			(b["node"] as Node3D).position = pos
+		for j: int in range(done.size()):
+			var idx: int = int(done[done.size() - 1 - j])
+			(_barrages[idx]["node"] as Node).queue_free()
+			_barrages.remove_at(idx)
+
+
+	func _emit_particle(pos: Vector3, vel: Vector3, color: Color, size: float, life: float) -> void:
+		var mi := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = size
+		sm.height = size * 2.0
+		mi.mesh = sm
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = color
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mi.material_override = mat
+		mi.position = pos
+		_object_root.add_child(mi)
+		_particles.append({"node": mi, "vel": vel, "life": life, "max_life": life})
+
+
+	func _tick_particles(delta: float) -> void:
+		var done: Array[int] = []
+		for i: int in range(_particles.size()):
+			var pt: Dictionary = _particles[i]
+			pt["life"] = float(pt["life"]) - delta
+			var node: MeshInstance3D = pt["node"]
+			node.position = node.position + Vector3(pt["vel"]) * delta
+			var alpha: float = clampf(float(pt["life"]) / float(pt["max_life"]), 0.0, 1.0)
+			(node.material_override as StandardMaterial3D).albedo_color.a = alpha
+			if float(pt["life"]) <= 0.0:
+				done.append(i)
+		for j: int in range(done.size()):
+			var idx: int = int(done[done.size() - 1 - j])
+			(_particles[idx]["node"] as Node).queue_free()
+			_particles.remove_at(idx)
+
+
+	func _spawn_impact_burst(pos: Vector3) -> void:
+		for i: int in range(8):
+			var ang: float = randf() * TAU
+			_emit_particle(pos, Vector3(cos(ang), randf_range(0.5, 2.2), sin(ang)) * 34.0,
+					Color(1.0, 0.55, 0.2), CELL * 0.045, 0.5)
+
+
+	# === 摄像机 ===
+
+	func _update_camera() -> void:
+		if _camera == null:
+			return
+		var offset := Vector3(sin(_yaw) * cos(_pitch), sin(_pitch), cos(_yaw) * cos(_pitch)) * _cam_dist
+		_camera.position = _cam_target + offset
+		_camera.look_at(_cam_target, Vector3.UP)
+
+
+	# === 射线拾取（基地地面为水平面 y=0）===
+
+	func _screen_to_ground(screen_pos: Vector2) -> Vector3:
+		var factor: float = 1.0
+		if WindowManager.has_method("current_scale_factor"):
+			factor = WindowManager.current_scale_factor()
+		var ss: float = 1.0
+		if WindowManager.has_method("supersample_factor"):
+			ss = WindowManager.supersample_factor()
+		var vp_px := screen_pos * factor * ss
+		var ray_origin: Vector3 = _camera.project_ray_origin(vp_px)
+		var ray_dir: Vector3 = _camera.project_ray_normal(vp_px)
+		if absf(ray_dir.y) < 0.0001:
+			return Vector3.ZERO
+		var t: float = -ray_origin.y / ray_dir.y
+		if t < 0.0:
+			return Vector3.ZERO
+		return ray_origin + ray_dir * t
+
+
+	func _screen_to_cell(screen_pos: Vector2) -> Vector2i:
+		var hit: Vector3 = _screen_to_ground(screen_pos)
+		if hit == Vector3.ZERO:
+			return Vector2i(-1, -1)
+		var x: int = int(hit.x / CELL)
+		var y: int = int(hit.z / CELL)
+		if x < 0 or y < 0 or x >= MilitarySystem.BASE_W or y >= MilitarySystem.BASE_H:
+			return Vector2i(-1, -1)
+		return Vector2i(x, y)
+
+
+	# === 高亮（悬停单格 / 批量升级框选）===
+
+	func _selection_rect() -> Rect2i:
+		return Rect2i(mini(_select_start.x, _select_end.x), mini(_select_start.y, _select_end.y),
+				abs(_select_end.x - _select_start.x) + 1, abs(_select_end.y - _select_start.y) + 1)
+
+
+	func _update_hover_highlight() -> void:
+		if _highlight == null:
+			return
+		# 升级框选：蓝色半透明矩形盖选区域
+		if upgrade_mode and _select_start.x >= 0 and _select_end.x >= 0:
+			var r: Rect2i = _selection_rect()
+			var sw: float = float(r.size.x) * CELL
+			var sh: float = float(r.size.y) * CELL
+			_highlight.mesh = _make_flat_quad(sw, sh)
+			_highlight.position = Vector3(float(r.position.x) * CELL + sw * 0.5, HIGHLIFT,
+					float(r.position.y) * CELL + sh * 0.5)
+			_highlight.visible = true
+			(_highlight.material_override as StandardMaterial3D).albedo_color = Color(0.35, 0.8, 1.0, 0.28)
+			return
+		# 单格悬停高亮
+		if _hover_cell.x >= 0 and _hover_cell.y >= 0:
+			_highlight.mesh = _make_flat_quad(CELL, CELL)
+			_highlight.position = Vector3((_hover_cell.x + 0.5) * CELL, HIGHLIFT, (_hover_cell.y + 0.5) * CELL)
+			_highlight.visible = true
+			(_highlight.material_override as StandardMaterial3D).albedo_color = Color(0.4, 0.8, 1.0, 0.25)
+			return
+		_highlight.visible = false
+
+
+	func _make_flat_quad(w: float, h: float) -> Mesh:
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var hx: float = w * 0.5
+		var hz: float = h * 0.5
+		st.set_color(Color.WHITE)
+		st.add_vertex(Vector3(-hx, 0.0, -hz))
+		st.add_vertex(Vector3(hx, 0.0, -hz))
+		st.add_vertex(Vector3(hx, 0.0, hz))
+		st.add_vertex(Vector3(-hx, 0.0, hz))
+		# 绕序反转：法线朝上（+Y），俯视可见（修复：反绕序法线朝下被剔除）
+		st.add_index(0); st.add_index(2); st.add_index(1)
+		st.add_index(0); st.add_index(3); st.add_index(2)
+		return st.commit()
+
+
+	func _make_flat_mat(color: Color) -> StandardMaterial3D:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = color
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED  # 双面渲染，任意视角可见
+		return m
+
+
+	# === 输入 ===
+
+	func _gui_input(event: InputEvent) -> void:
+		# 滚轮缩放：任意页面可用（查看基地 3D 视距）
+		if event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_WHEEL_UP
+				or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+			if event.pressed:
+				var factor: float = 0.88 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.14
+				_cam_dist = clampf(_cam_dist * factor, CAM_DIST_MIN, CAM_DIST_MAX)
+				_update_camera()
+			return
+		if not edit_mode:
+			return
+		# 升级框选：优先处理（左键拖动框选，右键退出）
+		if upgrade_mode:
+			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+				if event.pressed:
+					_select_start = _screen_to_cell(event.position)
+					_select_end = _select_start
+				else:
+					if _select_start.x >= 0 and _select_end.x >= 0:
+						upgrade_requested.emit(_selection_rect())
+					_select_start = Vector2i(-1, -1)
+					_select_end = Vector2i(-1, -1)
+				_update_hover_highlight()
+				return
+			elif event is InputEventMouseMotion:
+				if _select_start.x >= 0:
+					_select_end = _screen_to_cell(event.position)
+					_update_hover_highlight()
+				return
+			elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+				set_upgrade_mode(false)
+				return
+		# 左键按下：记录拖动起点；点击已部署设施立即选中其类型；点击空白则待拖动/单击判定
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			_mouse_left_down = true
+			_press_pos = event.position
+			_last_mouse_pos = event.position
+			_press_cell = _screen_to_cell(event.position)
+			_last_drag_cell = Vector2i(-1, -1)
+			var placed_key: String = MilitarySystem.get_placed_key(_press_cell)
+			if placed_key != "":
+				unit_selected.emit(MilitarySystem.base_placed[placed_key]["unit_id"])
+				_click_armed = false
+			else:
+				_click_armed = true
+			return
+		# 鼠标移动：更新悬停 + 判定拖动（批量部署 / 旋转视角）
+		if event is InputEventMouseMotion:
+			var c: Vector2i = _screen_to_cell(event.position)
+			if c != _hover_cell:
+				_hover_cell = c
+				_update_hover_highlight()
+			if _mouse_left_down and not _rotating and not _dragging 					and event.position.distance_to(_press_pos) > DRAG_THRESHOLD:
+				if _click_armed and not selected_unit.is_empty():
+					_dragging = true         # 拖动批量部署（划过可建格连续放置）
+					_click_armed = false
+					_last_drag_cell = Vector2i(-1, -1)
+				else:
+					_rotating = true         # 左键拖动旋转视角
+					_click_armed = false
+			if _dragging:
+				if c.x >= 0 and c != _last_drag_cell:
+					_last_drag_cell = c
+					place_requested.emit(c)
+			if _rotating:
+				var delta: Vector2 = event.position - _last_mouse_pos
+				_yaw -= delta.x * ROTATE_SPEED
+				_pitch = clampf(_pitch + delta.y * ROTATE_SPEED, CAM_PITCH_MIN, CAM_PITCH_MAX)
+				_update_camera()
+			_last_mouse_pos = event.position
+			return
+		# 左键松开：判定单击（部署/取消选择）或结束拖动/旋转
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+			_mouse_left_down = false
+			if _rotating:
+				_rotating = false
+				return
+			if _dragging:
+				_dragging = false
+				_click_armed = false
+				return
+			if _click_armed:
+				_click_armed = false
+				if not selected_unit.is_empty():
+					place_requested.emit(_press_cell)
+				else:
+					unit_selected.emit("")
+			return
+		# 右键：拆除设施 / 取消拖动
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+			var c: Vector2i = _screen_to_cell(event.position)
+			if MilitarySystem.get_placed_key(c) != "":
+				remove_requested.emit(c)
+			_mouse_left_down = false
+			_dragging = false
+			_rotating = false
+			_click_armed = false
+
+
+	# === 工具（父类接口，保持兼容）===
 
 	func set_upgrade_mode(on: bool) -> void:
 		## 批量升级框选模式开关（左键拖动框选，右键退出）
 		upgrade_mode = on
 		_select_start = Vector2i(-1, -1)
 		_select_end = Vector2i(-1, -1)
-		queue_redraw()
+		_update_hover_highlight()
 
 
-	func _gui_input(event: InputEvent) -> void:
-		if not edit_mode:
+	# === 子视口尺寸同步（同 grid_view.gd）===
+
+	func _physical_size() -> Vector2i:
+		var factor: float = 1.0
+		if WindowManager.has_method("current_scale_factor"):
+			factor = WindowManager.current_scale_factor()
+		var ss: float = 1.0
+		if WindowManager.has_method("supersample_factor"):
+			ss = WindowManager.supersample_factor()
+		return Vector2i(maxi(64, int(size.x * factor * ss)), maxi(64, int(size.y * factor * ss)))
+
+
+	func _update_viewport_size() -> void:
+		if _viewport == null or _viewport_container == null:
 			return
-		# 升级框选：优先处理
-		if upgrade_mode:
-			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-				if event.pressed:
-					_select_start = _pos_to_cell(event.position)
-					_select_end = _select_start
-				else:
-					if _select_start.x >= 0 and _select_end.x >= 0:
-						upgrade_requested.emit(Rect2i(
-							mini(_select_start.x, _select_end.x), mini(_select_start.y, _select_end.y),
-							abs(_select_end.x - _select_start.x) + 1, abs(_select_end.y - _select_start.y) + 1))
-					_select_start = Vector2i(-1, -1)
-					_select_end = Vector2i(-1, -1)
-				queue_redraw()
-				return
-			elif event is InputEventMouseMotion:
-				if _select_start.x >= 0:
-					_select_end = _pos_to_cell(event.position)
-					queue_redraw()
-				return
-			elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-				set_upgrade_mode(false)
-				return
-		if event is InputEventMouseMotion:
-			var c: Vector2i = _pos_to_cell(event.position)
-			if c != _hover_cell:
-				_hover_cell = c
-				queue_redraw()
-			# 拖动批量部署：选中设施后按住左键划过可建格连续部署
-			if _dragging:
-				if c.x >= 0 and c != _last_drag_cell:
-					_last_drag_cell = c
-					place_requested.emit(c)
-			elif _mouse_left_down and _click_armed and not _dragging \
-					and event.position.distance_to(_press_pos) > DRAG_THRESHOLD:
-				_dragging = true
-				_last_drag_cell = Vector2i(-1, -1)
-			return
-		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-			_mouse_left_down = event.pressed
-			if event.pressed:
-				_press_pos = event.position
-				_press_cell = _pos_to_cell(event.position)
-				_last_drag_cell = Vector2i(-1, -1)
-				# 点击已部署设施：立即选中其类型（不进入拖动）
-				var placed_key: String = MilitarySystem.get_placed_key(_press_cell)
-				if placed_key != "":
-					unit_selected.emit(MilitarySystem.base_placed[placed_key]["unit_id"])
-					_click_armed = false
-				else:
-					_click_armed = true
-			else:
-				if _dragging:
-					# 拖动结束
-					_dragging = false
-					_click_armed = false
-				elif _click_armed:
-					# 未拖动：单击空白格部署选中设施（无选中则取消选择）
-					_click_armed = false
-					if not selected_unit.is_empty():
-						place_requested.emit(_press_cell)
-					else:
-						unit_selected.emit("")
-		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-			var c: Vector2i = _pos_to_cell(event.position)
-			if MilitarySystem.get_placed_key(c) != "":
-				remove_requested.emit(c)
-			# 右键同时终止拖动状态
-			_mouse_left_down = false
-			_dragging = false
-			_click_armed = false
+		var target: Vector2i = _physical_size()
+		if target != _viewport.size:
+			_viewport.size = target
+			_viewport_container.size = Vector2(target)
+		var factor: float = 1.0
+		if WindowManager.has_method("current_scale_factor"):
+			factor = WindowManager.current_scale_factor()
+		var ss: float = 1.0
+		if WindowManager.has_method("supersample_factor"):
+			ss = WindowManager.supersample_factor()
+		var inv: Vector2 = Vector2(1.0 / (factor * ss), 1.0 / (factor * ss))
+		if _viewport_container.scale != inv:
+			_viewport_container.scale = inv
 
 
-	func _draw() -> void:
-		var origin: Vector2 = _grid_origin()
-		var cell: float = MilitarySystem.cell_size * 0.9
-		var grid_px: Vector2 = Vector2(MilitarySystem.BASE_W, MilitarySystem.BASE_H) * cell
-		draw_rect(Rect2(origin, grid_px), Color(0.03, 0.06, 0.12, 0.9))
-		for x: int in range(MilitarySystem.BASE_W):
-			for y: int in range(MilitarySystem.BASE_H):
-				draw_rect(Rect2(origin + Vector2(x, y) * cell, Vector2(cell, cell)),
-						Color(0.05, 0.1, 0.2, 0.5), false, 1.0)
-		# 已部署设施（立体感：侧面+顶面）
-		for key: String in MilitarySystem.base_placed:
-			var p: Dictionary = MilitarySystem.base_placed[key]
-			var unit: Dictionary = MilitarySystem.units_data.get(p["unit_id"], {})
-			var anchor: Vector2i = MilitarySystem._key_to_cell(key)
-			var rect := Rect2(origin + Vector2(anchor * int(cell)), Vector2(int(p["width"]) * cell, int(p["height"]) * cell))
-			var c: Color = _unit_color(p["unit_id"])
-			draw_rect(Rect2(rect.position + Vector2(2, 3), rect.size), Color(0, 0, 0, 0.3))
-			draw_rect(rect, c.darkened(0.45))  # 侧面
-			draw_rect(Rect2(rect.position, Vector2(rect.size.x, rect.size.y * 0.8)), c.lightened(0.12))
-			draw_rect(Rect2(rect.position, Vector2(rect.size.x, rect.size.y * 0.8)), c.lightened(0.5), false, 2.0)
-			draw_string(FONT_BOLD, rect.position + Vector2(6, rect.size.y * 0.55), unit.get("name", "?"),
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.95))
-			# 等级徽章（Lv.N）
-			var lv: int = int(p.get("level", 1))
-			if lv > 1:
-				draw_string(FONT_BOLD, rect.position + Vector2(rect.size.x - 40, rect.size.y * 0.55), "Lv.%d" % lv,
-						HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 0.9, 0.45, 0.95))
-		# 升级框选矩形（蓝色半透明）
-		if upgrade_mode and _select_start.x >= 0 and _select_end.x >= 0:
-			var sr: Rect2i = Rect2i(mini(_select_start.x, _select_end.x), mini(_select_start.y, _select_end.y),
-					abs(_select_end.x - _select_start.x) + 1, abs(_select_end.y - _select_start.y) + 1)
-			var srect := Rect2(origin + Vector2(sr.position) * int(cell), Vector2(sr.size) * int(cell))
-			draw_rect(srect, Color(0.35, 0.8, 1.0, 0.22))
-			draw_rect(srect, Color(0.35, 0.8, 1.0, 0.8), false, 2.0)
-		# 悬停高亮
-		if _hover_cell.x >= 0 and _hover_cell.y >= 0:
-			draw_rect(Rect2(origin + Vector2(_hover_cell * int(cell)), Vector2(cell, cell)),
-					Color(0.4, 0.8, 1, 0.25))
-
-
-	func _unit_color(unit_id: String) -> Color:
-		match unit_id:
-			"turret": return Color(0.75, 0.35, 0.3)
-			"wall": return Color(0.5, 0.52, 0.58)
-			"barracks": return Color(0.4, 0.5, 0.85)
-			"aa": return Color(0.8, 0.55, 0.25)
-			"armory": return Color(0.55, 0.4, 0.75)
-			"bunker": return Color(0.35, 0.65, 0.55)
-			_: return Color(0.5, 0.6, 0.8)
-
-
-	func _grid_origin() -> Vector2:
-		var cell: float = MilitarySystem.cell_size * 0.9
-		var grid_px: Vector2 = Vector2(MilitarySystem.BASE_W, MilitarySystem.BASE_H) * cell
-		return Vector2((size.x - grid_px.x) / 2.0, (size.y - grid_px.y) / 2.0)
-
-
-	func _pos_to_cell(pos: Vector2) -> Vector2i:
-		var origin: Vector2 = _grid_origin()
-		var cell: float = MilitarySystem.cell_size * 0.9
-		var rel: Vector2 = pos - origin
-		if rel.x < 0 or rel.y < 0:
-			return Vector2i(-1, -1)
-		return Vector2i(int(rel.x / cell), int(rel.y / cell))
+	func _notification(what: int) -> void:
+		# 控件尺寸/全局缩放变化 → 同步子视口分辨率（防 3D 画面拉伸模糊）
+		if what == NOTIFICATION_RESIZED or what == NOTIFICATION_TRANSFORM_CHANGED:
+			_update_viewport_size()
