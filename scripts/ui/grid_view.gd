@@ -69,6 +69,9 @@ const ROCK_SHADES: Array[Color] = [     # 岩地色阶（随机微调）
 ]
 const ROCK_RATIO: float = 0.4           # 岩质地块占比（其余为草地）
 
+# === 路灯夜间光源（夜晚供亮，亮度随 nightness） ===
+var _streetlights: Array[OmniLight3D] = []
+
 # === 昼夜系统 ===
 const DAY_LENGTH: float = 90.0          # 现实 90 秒 = 游戏一昼夜（随 GameState 游戏时间流逝）
 # 天体轨道采用竖直圆模型：θ 从东地平(0)→头顶(π/2)→西地平(π)→地下(2π)
@@ -341,6 +344,7 @@ func _rebuild_all() -> void:
 	for pt: Dictionary in _particles:
 		(pt["node"] as Node).queue_free()
 	_particles.clear()
+	_streetlights.clear()  # 路灯光源随重建一并清理（模型 queue_free）
 	for pp: Dictionary in _people:
 		(pp["node"] as Node).queue_free()
 	_people.clear()
@@ -488,6 +492,16 @@ func _spawn_building(cell: Vector2i, item_id: String) -> void:
 	badge.position = Vector3(0, _cell_size_3d() * 1.45, 0)
 	badge.pixel_size = 0.004
 	node.add_child(badge)
+	# 路灯：附加夜间光源（OmniLight，亮度由 _update_day_night 按 nightness 驱动）
+	if item_id == "streetlight":
+		var light := OmniLight3D.new()
+		light.light_color = Color(1.0, 0.9, 0.6)
+		light.omni_range = _cell_size_3d() * 5.0
+		light.light_energy = 0.0  # 白天不亮，夜间由 _update_day_night 控制
+		light.light_cull_mask = 1
+		light.position = Vector3(0, _cell_size_3d() * 1.2, 0)
+		node.add_child(light)
+		_streetlights.append(light)
 	# 出生动画：从地面升起
 	if p.is_empty() or not p.get("completed", false):
 		node.scale = Vector3(1, 0.1, 1)
@@ -660,6 +674,9 @@ func _update_day_night(_delta: float) -> void:
 	_sky.environment.background_color = sky_col
 	_sky.environment.ambient_light_color = sky_col.lightened(0.25)
 	_sky.environment.ambient_light_energy = ambient
+	# 路灯夜间供亮：亮度随夜晚深度（nightness）平滑变化
+	for light: OmniLight3D in _streetlights:
+		light.light_energy = nightness * 1.6
 
 
 func _min_zoom() -> float:

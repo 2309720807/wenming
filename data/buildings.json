@@ -48,6 +48,17 @@
 			"bonuses": { "happiness": 2, "pop_growth_rate": 0.08 }
 		},
 		{
+			"id": "streetlight",
+			"name": "路灯",
+			"cost": 50,
+			"width": 1,
+			"height": 1,
+			"build_time": 4.0,
+			"color": "#e8c95a",
+			"bonus_desc": "夜晚提供光亮，幸福度+1",
+			"bonuses": { "happiness": 1 }
+		},
+		{
 			"id": "finance",
 			"name": "金融中心",
 			"cost": 200,

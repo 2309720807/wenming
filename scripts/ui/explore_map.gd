@@ -271,13 +271,13 @@ func _on_upgrade_requested(rect: Rect2i) -> void:
 		return
 	var dialog := ConfirmationDialog.new()
 	dialog.title = "批量升级"
-	dialog.dialog_text = "框选区域内：\n建筑 %d 座 · 共需 %d 金币\n\n确定执行批量升级吗？（立即完成）" % [
+	dialog.dialog_text = "框选区域内：\n建筑 %d 座 · 共需 %d 金币\n\n确定开始批量升级吗？（各建筑按升级时间施工，完成后生效）" % [
 		int(preview["count"]), int(preview["cost"])]
 	dialog.ok_button_text = "执行升级"
 	dialog.cancel_button_text = "取消"
 	dialog.confirmed.connect(func() -> void:
 		var result: Dictionary = BuildingSystem.batch_upgrade(rect)
-		info_hint.text = "批量升级完成：%d 座升级（花费 %d 金币）%s" % [
+		info_hint.text = "批量升级开始：%d 座进入施工（花费 %d 金币）%s" % [
 			int(result["upgraded"]), int(result["cost"]),
 			"，%d 座跳过" % int(result["skipped"]) if int(result["skipped"]) > 0 else ""])
 	dialog.close_requested.connect(dialog.queue_free)

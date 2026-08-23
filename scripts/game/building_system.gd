@@ -267,7 +267,8 @@ func preview_upgrade(rect: Rect2i) -> Dictionary:
 	return result
 
 
-## 区域内已完工建筑批量升级（立即完成，跳过施工时间）；返回 {upgraded, cost, skipped}
+## 区域内已完工建筑批量升级（进入升级施工，与单次升级同时间）；返回 {upgraded, cost, skipped}
+## 施工期间建筑处于 op="upgrade"，由 _process 按剩余时间推进，完成后等级+1
 func batch_upgrade(rect: Rect2i) -> Dictionary:
 	var result := {"upgraded": 0, "cost": 0.0, "skipped": 0}
 	for key: String in placed:
@@ -286,11 +287,15 @@ func batch_upgrade(rect: Rect2i) -> Dictionary:
 			result["skipped"] += 1
 			continue
 		GameState.add_gold(-cost)
-		p["level"] = int(p["level"]) + 1
+		# 进入升级施工（时间 = 建造时间 × 0.6 × 当前等级，与单次升级一致；修复：批量秒升）
+		var item: Dictionary = get_item(p["item_id"])
+		var up_time: float = float(item.get("build_time", 8.0)) * BuildingBalance.UPGRADE_TIME_RATIO * float(p["level"])
+		p["remaining"] = up_time
+		p["total"] = up_time
+		p["op"] = "upgrade"
 		result["upgraded"] += 1
 		result["cost"] += cost
 	if result["upgraded"] > 0:
-		_recalculate_bonuses()
 		grid_changed.emit(Vector2i.ZERO)
 	return result
 

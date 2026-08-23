@@ -104,6 +104,8 @@ static func build(item: Dictionary, level: int, cellf: float) -> Node3D:
 			_build_fountain(root, total_w, total_d, cellf, base, level)
 		"statue":
 			_build_statue(root, total_w, total_d, cellf, base, level)
+		"streetlight":
+			_build_streetlight(root, total_w, total_d, cellf, base, level)
 		_:
 			_build_generic(root, total_w, total_d, cellf, base, level)
 	return root
@@ -478,6 +480,33 @@ static func _build_statue(root: Node3D, tw: float, td: float, cellf: float, base
 
 
 # ========== 通用（备用类型） ==========
+
+static func _build_streetlight(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
+	## 路灯：基座 + 灯柱 + 灯臂 + 发光灯头（夜晚供亮，灯光 OmniLight 由 grid_view 附加）
+	# 基座
+	_add_box(root, cellf * 0.28, cellf * 0.1, cellf * 0.28, base.darkened(0.3), Vector3(0, cellf * 0.05, 0))
+	# 灯柱（细圆柱，高度随等级略增）
+	var pole_h: float = cellf * (1.1 + 0.1 * mini(level, 3))
+	var pole: MeshInstance3D = _cyl(cellf * 0.045, cellf * 0.06, pole_h, base.darkened(0.15))
+	pole.position = Vector3(0, cellf * 0.1 + pole_h * 0.5, 0)
+	root.add_child(pole)
+	# 灯臂（顶部弯向一侧 + 灯头）
+	_add_box(root, cellf * 0.4, cellf * 0.05, cellf * 0.05, base.darkened(0.05), Vector3(cellf * 0.18, cellf * 0.1 + pole_h, 0))
+	# 发光灯头（自发光球体，夜间亮灯由 OmniLight 与自发光材质共同作用）
+	var lamp_mat := StandardMaterial3D.new()
+	lamp_mat.albedo_color = Color(1.0, 0.95, 0.7)
+	lamp_mat.emission_enabled = true
+	lamp_mat.emission = Color(1.0, 0.9, 0.55)
+	lamp_mat.emission_energy_multiplier = 2.0
+	var lamp := MeshInstance3D.new()
+	var lamp_mesh := SphereMesh.new()
+	lamp_mesh.radius = cellf * 0.07
+	lamp_mesh.height = cellf * 0.14
+	lamp.mesh = lamp_mesh
+	lamp.material_override = lamp_mat
+	lamp.position = Vector3(cellf * 0.36, cellf * 0.1 + pole_h - cellf * 0.05, 0)
+	root.add_child(lamp)
+
 
 static func _build_generic(root: Node3D, tw: float, td: float, cellf: float, base: Color, level: int) -> void:
 	var body_h: float = cellf * (0.55 + 0.1 * mini(level, 3))
